@@ -169,6 +169,7 @@ body {
         0 4px 6px -1px rgba(0, 0, 0, 0.1),
         0 2px 4px -1px rgba(0, 0, 0, 0.06),
         3px 3px 0px rgba(212, 168, 75, 0.2); /* Offset shadow */
+    min-height: 700px; /* Prevents layout jumping when switching tabs */
 }
 
 /* --- Tool Tabs --- */
@@ -211,7 +212,17 @@ body {
 
 /* Tool Panels */
 .tool-panels {
-    min-height: 200px;
+    min-height: 280px;
+}
+
+/* Stable upload/preview area height */
+.upload-zone,
+.preview-area,
+.crop-canvas-container,
+.heic-upload-zone,
+.bulk-upload-zone,
+.file-list-container {
+    min-height: 180px;
 }
 
 .tool-panel {
@@ -220,6 +231,7 @@ body {
 
 .tool-panel.active {
     display: block;
+    min-height: 350px;
 }
 
 .tool-description {
