@@ -526,8 +526,28 @@
     }
 
     // ===========================================
-    // CROP TOOL
+    // CROP TOOL (Enhanced with move/resize handles)
     // ===========================================
+
+    // Drag modes
+    const DRAG_MODE = {
+        NONE: 'none',
+        MOVE: 'move',
+        RESIZE_NW: 'nw',
+        RESIZE_NE: 'ne',
+        RESIZE_SW: 'sw',
+        RESIZE_SE: 'se',
+        RESIZE_N: 'n',
+        RESIZE_S: 's',
+        RESIZE_E: 'e',
+        RESIZE_W: 'w',
+        NEW: 'new'
+    };
+
+    let dragMode = DRAG_MODE.NONE;
+    let dragOffset = { x: 0, y: 0 };
+    let originalSelection = null;
+    const HANDLE_SIZE = 10; // Size of corner/edge handles in canvas pixels
 
     function initCropTool() {
         const { cropCanvas, aspectButtons, cropBtn } = elements;
@@ -546,9 +566,9 @@
                     cropAspectRatio = w / h;
                 }
 
-                // Reset selection with new aspect ratio
-                if (originalImage) {
-                    resetCropSelection();
+                // Adjust current selection to new aspect ratio (don't reset)
+                if (originalImage && cropSelection.width > 0) {
+                    adjustSelectionToAspectRatio();
                     renderCropCanvas();
                 }
             });
@@ -561,6 +581,31 @@
         cropCanvas.addEventListener('pointerleave', handleCropPointerUp);
 
         cropBtn.addEventListener('click', () => safeExecute(processCrop, 'Crop'));
+    }
+
+    function adjustSelectionToAspectRatio() {
+        if (!cropAspectRatio) return;
+
+        // Keep center, adjust dimensions
+        const centerX = cropSelection.x + cropSelection.width / 2;
+        const centerY = cropSelection.y + cropSelection.height / 2;
+
+        let newWidth = cropSelection.width;
+        let newHeight = cropSelection.height;
+
+        if (newWidth / newHeight > cropAspectRatio) {
+            newWidth = newHeight * cropAspectRatio;
+        } else {
+            newHeight = newWidth / cropAspectRatio;
+        }
+
+        cropSelection.width = newWidth;
+        cropSelection.height = newHeight;
+        cropSelection.x = centerX - newWidth / 2;
+        cropSelection.y = centerY - newHeight / 2;
+
+        clampSelectionToBounds();
+        updateCropSelectionDisplay();
     }
 
     function initCropCanvas() {
@@ -578,7 +623,10 @@
         canvas.width = Math.round(originalWidth * canvasScale);
         canvas.height = Math.round(originalHeight * canvasScale);
 
-        resetCropSelection();
+        // Only reset selection if none exists
+        if (cropSelection.width === 0 || cropSelection.height === 0) {
+            resetCropSelection();
+        }
         renderCropCanvas();
     }
 
@@ -588,7 +636,6 @@
         let selHeight = originalHeight * 0.8;
 
         if (cropAspectRatio) {
-            // Constrain to aspect ratio
             if (selWidth / selHeight > cropAspectRatio) {
                 selWidth = selHeight * cropAspectRatio;
             } else {
@@ -604,6 +651,71 @@
         };
 
         updateCropSelectionDisplay();
+    }
+
+    function clampSelectionToBounds() {
+        // Ensure selection stays within image bounds
+        cropSelection.width = Math.max(20, Math.min(cropSelection.width, originalWidth));
+        cropSelection.height = Math.max(20, Math.min(cropSelection.height, originalHeight));
+        cropSelection.x = Math.max(0, Math.min(cropSelection.x, originalWidth - cropSelection.width));
+        cropSelection.y = Math.max(0, Math.min(cropSelection.y, originalHeight - cropSelection.height));
+    }
+
+    function getHandleAtPoint(x, y) {
+        // Convert to canvas coordinates for handle detection
+        const sel = cropSelection;
+        const handleRadius = HANDLE_SIZE / canvasScale / 2;
+
+        // Corner handles (check first - they take priority)
+        const corners = [
+            { mode: DRAG_MODE.RESIZE_NW, x: sel.x, y: sel.y },
+            { mode: DRAG_MODE.RESIZE_NE, x: sel.x + sel.width, y: sel.y },
+            { mode: DRAG_MODE.RESIZE_SW, x: sel.x, y: sel.y + sel.height },
+            { mode: DRAG_MODE.RESIZE_SE, x: sel.x + sel.width, y: sel.y + sel.height }
+        ];
+
+        for (const corner of corners) {
+            if (Math.abs(x - corner.x) < handleRadius * 2 && Math.abs(y - corner.y) < handleRadius * 2) {
+                return corner.mode;
+            }
+        }
+
+        // Edge handles (midpoints)
+        const edges = [
+            { mode: DRAG_MODE.RESIZE_N, x: sel.x + sel.width / 2, y: sel.y },
+            { mode: DRAG_MODE.RESIZE_S, x: sel.x + sel.width / 2, y: sel.y + sel.height },
+            { mode: DRAG_MODE.RESIZE_W, x: sel.x, y: sel.y + sel.height / 2 },
+            { mode: DRAG_MODE.RESIZE_E, x: sel.x + sel.width, y: sel.y + sel.height / 2 }
+        ];
+
+        for (const edge of edges) {
+            if (Math.abs(x - edge.x) < handleRadius * 2 && Math.abs(y - edge.y) < handleRadius * 2) {
+                return edge.mode;
+            }
+        }
+
+        // Inside selection = move
+        if (x >= sel.x && x <= sel.x + sel.width && y >= sel.y && y <= sel.y + sel.height) {
+            return DRAG_MODE.MOVE;
+        }
+
+        // Outside = new selection
+        return DRAG_MODE.NEW;
+    }
+
+    function getCursorForMode(mode) {
+        switch (mode) {
+            case DRAG_MODE.MOVE: return 'move';
+            case DRAG_MODE.RESIZE_NW:
+            case DRAG_MODE.RESIZE_SE: return 'nwse-resize';
+            case DRAG_MODE.RESIZE_NE:
+            case DRAG_MODE.RESIZE_SW: return 'nesw-resize';
+            case DRAG_MODE.RESIZE_N:
+            case DRAG_MODE.RESIZE_S: return 'ns-resize';
+            case DRAG_MODE.RESIZE_E:
+            case DRAG_MODE.RESIZE_W: return 'ew-resize';
+            default: return 'crosshair';
+        }
     }
 
     function renderCropCanvas() {
@@ -642,7 +754,7 @@
 
         // Draw corner handles
         ctx.fillStyle = '#D4A84B';
-        const handleSize = 8;
+        const hs = HANDLE_SIZE;
         const corners = [
             [sel.x, sel.y],
             [sel.x + sel.width, sel.y],
@@ -651,7 +763,25 @@
         ];
 
         corners.forEach(([cx, cy]) => {
-            ctx.fillRect(cx - handleSize/2, cy - handleSize/2, handleSize, handleSize);
+            ctx.fillRect(cx - hs/2, cy - hs/2, hs, hs);
+        });
+
+        // Draw edge handles (midpoints)
+        const edges = [
+            [sel.x + sel.width / 2, sel.y],
+            [sel.x + sel.width / 2, sel.y + sel.height],
+            [sel.x, sel.y + sel.height / 2],
+            [sel.x + sel.width, sel.y + sel.height / 2]
+        ];
+
+        ctx.fillStyle = '#fff';
+        ctx.strokeStyle = '#D4A84B';
+        ctx.lineWidth = 1;
+        edges.forEach(([ex, ey]) => {
+            ctx.beginPath();
+            ctx.arc(ex, ey, hs/2 - 1, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.stroke();
         });
 
         // Draw rule of thirds grid
@@ -659,14 +789,12 @@
         ctx.lineWidth = 1;
 
         for (let i = 1; i < 3; i++) {
-            // Vertical lines
             const vx = sel.x + (sel.width * i / 3);
             ctx.beginPath();
             ctx.moveTo(vx, sel.y);
             ctx.lineTo(vx, sel.y + sel.height);
             ctx.stroke();
 
-            // Horizontal lines
             const hy = sel.y + (sel.height * i / 3);
             ctx.beginPath();
             ctx.moveTo(sel.x, hy);
@@ -680,49 +808,153 @@
         const x = (e.clientX - rect.left) / canvasScale;
         const y = (e.clientY - rect.top) / canvasScale;
 
+        dragMode = getHandleAtPoint(x, y);
         isDragging = true;
         dragStart = { x, y };
+        dragOffset = { x: x - cropSelection.x, y: y - cropSelection.y };
+        originalSelection = { ...cropSelection };
 
         elements.cropCanvas.setPointerCapture(e.pointerId);
+        elements.cropCanvas.style.cursor = getCursorForMode(dragMode);
     }
 
     function handleCropPointerMove(e) {
-        if (!isDragging) return;
-
         const rect = elements.cropCanvas.getBoundingClientRect();
         const x = (e.clientX - rect.left) / canvasScale;
         const y = (e.clientY - rect.top) / canvasScale;
 
-        // Calculate new selection from drag
-        let newX = Math.min(dragStart.x, x);
-        let newY = Math.min(dragStart.y, y);
-        let newWidth = Math.abs(x - dragStart.x);
-        let newHeight = Math.abs(y - dragStart.y);
+        // Update cursor based on what's under the pointer
+        if (!isDragging) {
+            const mode = getHandleAtPoint(x, y);
+            elements.cropCanvas.style.cursor = getCursorForMode(mode);
+            return;
+        }
 
-        // Constrain to aspect ratio if set
+        const dx = x - dragStart.x;
+        const dy = y - dragStart.y;
+
+        switch (dragMode) {
+            case DRAG_MODE.MOVE:
+                cropSelection.x = x - dragOffset.x;
+                cropSelection.y = y - dragOffset.y;
+                break;
+
+            case DRAG_MODE.RESIZE_SE:
+                resizeFromCorner(dx, dy, false, false);
+                break;
+            case DRAG_MODE.RESIZE_SW:
+                resizeFromCorner(dx, dy, true, false);
+                break;
+            case DRAG_MODE.RESIZE_NE:
+                resizeFromCorner(dx, dy, false, true);
+                break;
+            case DRAG_MODE.RESIZE_NW:
+                resizeFromCorner(dx, dy, true, true);
+                break;
+
+            case DRAG_MODE.RESIZE_E:
+                resizeFromEdge(dx, 0, 'e');
+                break;
+            case DRAG_MODE.RESIZE_W:
+                resizeFromEdge(dx, 0, 'w');
+                break;
+            case DRAG_MODE.RESIZE_S:
+                resizeFromEdge(0, dy, 's');
+                break;
+            case DRAG_MODE.RESIZE_N:
+                resizeFromEdge(0, dy, 'n');
+                break;
+
+            case DRAG_MODE.NEW:
+                // Create new selection from drag
+                let newX = Math.min(dragStart.x, x);
+                let newY = Math.min(dragStart.y, y);
+                let newWidth = Math.abs(x - dragStart.x);
+                let newHeight = Math.abs(y - dragStart.y);
+
+                if (cropAspectRatio && newWidth > 10 && newHeight > 10) {
+                    if (newWidth / newHeight > cropAspectRatio) {
+                        newWidth = newHeight * cropAspectRatio;
+                    } else {
+                        newHeight = newWidth / cropAspectRatio;
+                    }
+                }
+
+                cropSelection = { x: newX, y: newY, width: newWidth, height: newHeight };
+                break;
+        }
+
+        clampSelectionToBounds();
+        updateCropSelectionDisplay();
+        renderCropCanvas();
+    }
+
+    function resizeFromCorner(dx, dy, fromLeft, fromTop) {
+        let newWidth = originalSelection.width + (fromLeft ? -dx : dx);
+        let newHeight = originalSelection.height + (fromTop ? -dy : dy);
+
+        // Maintain aspect ratio if set
         if (cropAspectRatio) {
-            if (newWidth / newHeight > cropAspectRatio) {
-                newWidth = newHeight * cropAspectRatio;
-            } else {
+            if (Math.abs(dx) > Math.abs(dy)) {
                 newHeight = newWidth / cropAspectRatio;
+            } else {
+                newWidth = newHeight * cropAspectRatio;
             }
         }
 
-        // Clamp to image bounds
-        newX = Math.max(0, Math.min(newX, originalWidth - newWidth));
-        newY = Math.max(0, Math.min(newY, originalHeight - newHeight));
-        newWidth = Math.max(10, Math.min(newWidth, originalWidth - newX));
-        newHeight = Math.max(10, Math.min(newHeight, originalHeight - newY));
+        // Minimum size
+        newWidth = Math.max(20, newWidth);
+        newHeight = Math.max(20, newHeight);
 
-        cropSelection = { x: newX, y: newY, width: newWidth, height: newHeight };
+        // Update position if resizing from left or top
+        if (fromLeft) {
+            cropSelection.x = originalSelection.x + originalSelection.width - newWidth;
+        }
+        if (fromTop) {
+            cropSelection.y = originalSelection.y + originalSelection.height - newHeight;
+        }
 
-        updateCropSelectionDisplay();
-        renderCropCanvas();
+        cropSelection.width = newWidth;
+        cropSelection.height = newHeight;
+    }
+
+    function resizeFromEdge(dx, dy, edge) {
+        switch (edge) {
+            case 'e':
+                cropSelection.width = Math.max(20, originalSelection.width + dx);
+                if (cropAspectRatio) {
+                    cropSelection.height = cropSelection.width / cropAspectRatio;
+                }
+                break;
+            case 'w':
+                const newWidthW = Math.max(20, originalSelection.width - dx);
+                cropSelection.x = originalSelection.x + originalSelection.width - newWidthW;
+                cropSelection.width = newWidthW;
+                if (cropAspectRatio) {
+                    cropSelection.height = cropSelection.width / cropAspectRatio;
+                }
+                break;
+            case 's':
+                cropSelection.height = Math.max(20, originalSelection.height + dy);
+                if (cropAspectRatio) {
+                    cropSelection.width = cropSelection.height * cropAspectRatio;
+                }
+                break;
+            case 'n':
+                const newHeightN = Math.max(20, originalSelection.height - dy);
+                cropSelection.y = originalSelection.y + originalSelection.height - newHeightN;
+                cropSelection.height = newHeightN;
+                if (cropAspectRatio) {
+                    cropSelection.width = cropSelection.height * cropAspectRatio;
+                }
+                break;
+        }
     }
 
     function handleCropPointerUp(e) {
         if (isDragging) {
             isDragging = false;
+            dragMode = DRAG_MODE.NONE;
             elements.cropCanvas.releasePointerCapture(e.pointerId);
         }
     }
