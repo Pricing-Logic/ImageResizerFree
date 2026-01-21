@@ -587,6 +587,35 @@ body {
     cursor: pointer;
 }
 
+/* Filename Input */
+.filename-group {
+    margin-top: 1.5rem;
+}
+
+.filename-input-wrapper {
+    display: flex;
+    align-items: stretch;
+}
+
+.filename-input {
+    flex: 1;
+    border-right: none;
+    border-radius: 0;
+    font-size: 0.95rem;
+}
+
+.filename-ext {
+    display: flex;
+    align-items: center;
+    background: var(--navy-blue);
+    color: #fff;
+    padding: 0 0.75rem;
+    font-family: var(--font-tech);
+    font-size: 0.9rem;
+    border: 1px solid var(--navy-blue);
+    white-space: nowrap;
+}
+
 /* Action Footer */
 .action-footer {
     margin-top: 2rem;

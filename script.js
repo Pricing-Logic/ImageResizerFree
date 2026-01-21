@@ -46,12 +46,16 @@
         qualitySlider: document.getElementById('quality-slider'),
         qualityVal: document.getElementById('quality-val'),
         formatSelect: document.getElementById('format-select'),
+        resizeFilename: document.getElementById('resize-filename'),
+        resizeFilenameExt: document.getElementById('resize-filename-ext'),
         resizeBtn: document.getElementById('resize-btn'),
 
         // Compress
         compressQualitySlider: document.getElementById('compress-quality-slider'),
         compressQualityVal: document.getElementById('compress-quality-val'),
         compressFormatSelect: document.getElementById('compress-format-select'),
+        compressFilename: document.getElementById('compress-filename'),
+        compressFilenameExt: document.getElementById('compress-filename-ext'),
         compressBtn: document.getElementById('compress-btn'),
 
         // Crop
@@ -63,10 +67,14 @@
         aspectButtons: document.querySelectorAll('.aspect-btn'),
         cropSelectionDims: document.getElementById('crop-selection-dims'),
         cropFormatSelect: document.getElementById('crop-format-select'),
+        cropFilename: document.getElementById('crop-filename'),
+        cropFilenameExt: document.getElementById('crop-filename-ext'),
         cropBtn: document.getElementById('crop-btn'),
 
         // Metadata
         metadataFormatSelect: document.getElementById('metadata-format-select'),
+        metadataFilename: document.getElementById('metadata-filename'),
+        metadataFilenameExt: document.getElementById('metadata-filename-ext'),
         metadataBtn: document.getElementById('metadata-btn')
     };
 
@@ -163,6 +171,39 @@
             console.error(`${toolName} error:`, err);
             alert(`${toolName} encountered an error. Please try again.`);
         }
+    }
+
+    // ===========================================
+    // FILENAME HELPERS
+    // ===========================================
+
+    /**
+     * Update all filename inputs with default values based on tool
+     */
+    function updateFilenameDefaults() {
+        const baseName = originalFileName || 'image';
+
+        elements.resizeFilename.value = `${baseName}_resized`;
+        elements.compressFilename.value = `${baseName}_compressed`;
+        elements.cropFilename.value = `${baseName}_cropped`;
+        elements.metadataFilename.value = `${baseName}_clean`;
+    }
+
+    /**
+     * Update extension display for a given format select and extension element
+     */
+    function updateExtensionDisplay(formatSelect, extElement) {
+        const format = formatSelect.value;
+        extElement.textContent = `.${format}`;
+    }
+
+    /**
+     * Get filename for download - uses custom name or falls back to default
+     */
+    function getDownloadFilename(filenameInput, defaultSuffix, format) {
+        const customName = filenameInput.value.trim();
+        const baseName = customName || `${originalFileName || 'image'}${defaultSuffix}`;
+        return `${sanitizeFilename(baseName)}.${format}`;
     }
 
     // ===========================================
@@ -313,6 +354,9 @@
         widthInput.value = originalWidth;
         heightInput.value = originalHeight;
 
+        // Set default filenames for all tools
+        updateFilenameDefaults();
+
         // Show appropriate preview based on current tool
         dropZone.classList.add('hidden');
 
@@ -360,7 +404,7 @@
 
     function initResizeTool() {
         const { widthInput, heightInput, lockBtn, qualitySlider, qualityVal,
-                formatSelect, resizeBtn } = elements;
+                formatSelect, resizeFilenameExt, resizeBtn } = elements;
 
         widthInput.addEventListener('input', handleWidthChange);
         heightInput.addEventListener('input', handleHeightChange);
@@ -368,10 +412,14 @@
         qualitySlider.addEventListener('input', () => {
             qualityVal.textContent = qualitySlider.value + '%';
         });
-        formatSelect.addEventListener('change', () => updateQualityVisibility(formatSelect, qualitySlider));
+        formatSelect.addEventListener('change', () => {
+            updateQualityVisibility(formatSelect, qualitySlider);
+            updateExtensionDisplay(formatSelect, resizeFilenameExt);
+        });
         resizeBtn.addEventListener('click', () => safeExecute(processResize, 'Resize'));
 
         updateQualityVisibility(formatSelect, qualitySlider);
+        updateExtensionDisplay(formatSelect, resizeFilenameExt);
     }
 
     function handleWidthChange() {
@@ -442,9 +490,10 @@
         ctx.drawImage(originalImage, 0, 0, targetWidth, targetHeight);
 
         const mimeType = `image/${format === 'jpg' ? 'jpeg' : format}`;
+        const filename = getDownloadFilename(elements.resizeFilename, '_resized', format);
 
         canvas.toBlob(function(blob) {
-            downloadBlob(blob, `${originalFileName}_resized.${format}`);
+            downloadBlob(blob, filename);
             cleanupCanvas(canvas);
         }, mimeType, format === 'png' ? undefined : quality);
     }
@@ -454,17 +503,20 @@
     // ===========================================
 
     function initCompressTool() {
-        const { compressQualitySlider, compressQualityVal, compressFormatSelect, compressBtn } = elements;
+        const { compressQualitySlider, compressQualityVal, compressFormatSelect,
+                compressFilenameExt, compressBtn } = elements;
 
         compressQualitySlider.addEventListener('input', () => {
             compressQualityVal.textContent = compressQualitySlider.value + '%';
         });
         compressFormatSelect.addEventListener('change', () => {
             updateQualityVisibility(compressFormatSelect, compressQualitySlider);
+            updateExtensionDisplay(compressFormatSelect, compressFilenameExt);
         });
         compressBtn.addEventListener('click', () => safeExecute(processCompress, 'Compress'));
 
         updateQualityVisibility(compressFormatSelect, compressQualitySlider);
+        updateExtensionDisplay(compressFormatSelect, compressFilenameExt);
     }
 
     function processCompress() {
@@ -484,9 +536,10 @@
         ctx.drawImage(originalImage, 0, 0);
 
         const mimeType = `image/${format === 'jpg' ? 'jpeg' : format}`;
+        const filename = getDownloadFilename(elements.compressFilename, '_compressed', format);
 
         canvas.toBlob(function(blob) {
-            downloadBlob(blob, `${originalFileName}_compressed.${format}`);
+            downloadBlob(blob, filename);
             cleanupCanvas(canvas);
         }, mimeType, format === 'png' ? undefined : quality);
     }
@@ -496,7 +549,14 @@
     // ===========================================
 
     function initMetadataTool() {
-        elements.metadataBtn.addEventListener('click', () => safeExecute(processStripMetadata, 'Strip Metadata'));
+        const { metadataFormatSelect, metadataFilenameExt, metadataBtn } = elements;
+
+        metadataFormatSelect.addEventListener('change', () => {
+            updateExtensionDisplay(metadataFormatSelect, metadataFilenameExt);
+        });
+        metadataBtn.addEventListener('click', () => safeExecute(processStripMetadata, 'Strip Metadata'));
+
+        updateExtensionDisplay(metadataFormatSelect, metadataFilenameExt);
     }
 
     function processStripMetadata() {
@@ -518,9 +578,10 @@
         const mimeType = `image/${format === 'jpg' ? 'jpeg' : format}`;
         // Use high quality since we're not trying to compress
         const quality = 0.95;
+        const filename = getDownloadFilename(elements.metadataFilename, '_clean', format);
 
         canvas.toBlob(function(blob) {
-            downloadBlob(blob, `${originalFileName}_clean.${format}`);
+            downloadBlob(blob, filename);
             cleanupCanvas(canvas);
         }, mimeType, format === 'png' ? undefined : quality);
     }
@@ -550,7 +611,13 @@
     const HANDLE_SIZE = 10; // Size of corner/edge handles in canvas pixels
 
     function initCropTool() {
-        const { cropCanvas, aspectButtons, cropBtn } = elements;
+        const { cropCanvas, aspectButtons, cropFormatSelect, cropFilenameExt, cropBtn } = elements;
+
+        // Format change listener
+        cropFormatSelect.addEventListener('change', () => {
+            updateExtensionDisplay(cropFormatSelect, cropFilenameExt);
+        });
+        updateExtensionDisplay(cropFormatSelect, cropFilenameExt);
 
         // Aspect ratio buttons
         aspectButtons.forEach(btn => {
@@ -992,9 +1059,10 @@
         ctx.drawImage(originalImage, x, y, width, height, 0, 0, width, height);
 
         const mimeType = `image/${format === 'jpg' ? 'jpeg' : format}`;
+        const filename = getDownloadFilename(elements.cropFilename, '_cropped', format);
 
         canvas.toBlob(function(blob) {
-            downloadBlob(blob, `${originalFileName}_cropped.${format}`);
+            downloadBlob(blob, filename);
             cleanupCanvas(canvas);
         }, mimeType, format === 'png' ? undefined : 0.92);
     }
