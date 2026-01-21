@@ -257,14 +257,30 @@
             p.classList.toggle('active', p.id === `${tool}-panel`);
         });
 
-        // Handle crop canvas visibility
-        if (tool === 'crop' && originalImage) {
+        // Multi-file tools (HEIC, Bulk) have their own upload zones
+        const isMultiFileTool = (tool === 'convert' || tool === 'bulk');
+
+        if (isMultiFileTool) {
+            // Hide shared upload zone for multi-file tools
+            elements.dropZone.classList.add('hidden');
+            elements.previewArea.classList.add('hidden');
+            elements.cropCanvasContainer.classList.add('hidden');
+        } else if (tool === 'crop' && originalImage) {
+            // Crop tool uses canvas
+            elements.dropZone.classList.add('hidden');
             elements.previewArea.classList.add('hidden');
             elements.cropCanvasContainer.classList.remove('hidden');
             initCropCanvas();
         } else if (originalImage) {
+            // Other single-image tools show preview
+            elements.dropZone.classList.add('hidden');
             elements.cropCanvasContainer.classList.add('hidden');
             elements.previewArea.classList.remove('hidden');
+        } else {
+            // No image loaded - show shared upload zone
+            elements.dropZone.classList.remove('hidden');
+            elements.previewArea.classList.add('hidden');
+            elements.cropCanvasContainer.classList.add('hidden');
         }
     }
 
