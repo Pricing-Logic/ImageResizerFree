@@ -63,7 +63,8 @@
 
 | Hash | Description |
 |------|-------------|
-| `7e43ac7` | Add Phase 3 Background Remover + SRI hashes + test suite |
+| `45aa3ac` | Add missing MediaPipe loader files for Background Remover |
+| `71ed909` | Add Phase 3 Background Remover + SRI hashes + test suite |
 | `45ee756` | Add Phase 2 tools: HEIC Converter and Bulk Rename |
 | `006b2ac` | Add custom filename option for all tools |
 | `d5e8cb8` | Update progress.md with analytics and recent commits |
