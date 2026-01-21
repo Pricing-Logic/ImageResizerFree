@@ -99,7 +99,19 @@
         bulkPattern: document.getElementById('bulk-pattern'),
         bulkStartNum: document.getElementById('bulk-start-num'),
         bulkZipFilename: document.getElementById('bulk-zip-filename'),
-        bulkRenameBtn: document.getElementById('bulk-rename-btn')
+        bulkRenameBtn: document.getElementById('bulk-rename-btn'),
+
+        // Background Remover
+        bgDropZone: document.getElementById('bg-drop-zone'),
+        bgFileInput: document.getElementById('bg-file-input'),
+        bgPreviewContainer: document.getElementById('bg-preview-container'),
+        bgPreviewCanvas: document.getElementById('bg-preview-canvas'),
+        bgLoading: document.getElementById('bg-loading'),
+        bgClearBtn: document.getElementById('bg-clear-btn'),
+        bgFormatSelect: document.getElementById('bg-format-select'),
+        bgFilename: document.getElementById('bg-filename'),
+        bgFilenameExt: document.getElementById('bg-filename-ext'),
+        bgDownloadBtn: document.getElementById('bg-download-btn')
     };
 
     // ===========================================
@@ -258,10 +270,10 @@
             p.classList.toggle('active', p.id === `${tool}-panel`);
         });
 
-        // Multi-file tools (HEIC, Bulk) have their own upload zones
-        const isMultiFileTool = (tool === 'convert' || tool === 'bulk');
+        // Tools with their own upload zones (HEIC, Bulk, Background)
+        const hasOwnUploadZone = (tool === 'convert' || tool === 'bulk' || tool === 'background');
 
-        if (isMultiFileTool) {
+        if (hasOwnUploadZone) {
             // Hide shared upload zone and divider for multi-file tools
             elements.dropZone.classList.add('hidden');
             elements.previewArea.classList.add('hidden');
@@ -1459,6 +1471,226 @@
     }
 
     // ===========================================
+    // BACKGROUND REMOVER TOOL
+    // ===========================================
+
+    let bgImage = null;
+    let bgResultBlob = null;
+    let selfieSegmentation = null;
+    const MAX_BG_DIMENSION = 2048;
+    const BG_TIMEOUT = 30000; // 30 seconds
+
+    function initBackgroundTool() {
+        const { bgDropZone, bgFileInput, bgClearBtn, bgFormatSelect,
+                bgFilenameExt, bgDownloadBtn } = elements;
+
+        bgDropZone.addEventListener('click', () => bgFileInput.click());
+        bgDropZone.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            bgDropZone.classList.add('drag-over');
+        });
+        bgDropZone.addEventListener('dragleave', (e) => {
+            e.preventDefault();
+            bgDropZone.classList.remove('drag-over');
+        });
+        bgDropZone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            bgDropZone.classList.remove('drag-over');
+            if (e.dataTransfer.files.length > 0) {
+                handleBgFile(e.dataTransfer.files[0]);
+            }
+        });
+        bgFileInput.addEventListener('change', (e) => {
+            if (e.target.files.length > 0) {
+                handleBgFile(e.target.files[0]);
+            }
+        });
+
+        bgClearBtn.addEventListener('click', clearBgImage);
+        bgFormatSelect.addEventListener('change', () => {
+            updateExtensionDisplay(bgFormatSelect, bgFilenameExt);
+        });
+        bgDownloadBtn.addEventListener('click', () => safeExecute(downloadBgResult, 'Background Download'));
+
+        updateExtensionDisplay(bgFormatSelect, bgFilenameExt);
+    }
+
+    function handleBgFile(file) {
+        // Validate file type
+        if (!file.type.startsWith('image/')) {
+            alert('Please select a valid image file.');
+            return;
+        }
+
+        // Validate file size (max 50MB)
+        if (file.size > 50 * 1024 * 1024) {
+            alert('File too large. Maximum size is 50MB.');
+            return;
+        }
+
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            const img = new Image();
+            img.onload = function() {
+                // Check dimensions
+                if (img.naturalWidth > MAX_BG_DIMENSION || img.naturalHeight > MAX_BG_DIMENSION) {
+                    alert(`Image too large. Maximum dimensions: ${MAX_BG_DIMENSION}x${MAX_BG_DIMENSION}px`);
+                    return;
+                }
+
+                bgImage = img;
+
+                // Set default filename
+                const baseName = file.name.replace(/\.[^/.]+$/, '');
+                elements.bgFilename.value = `${baseName}_nobg`;
+
+                // Show preview container, hide drop zone
+                elements.bgDropZone.classList.add('hidden');
+                elements.bgPreviewContainer.classList.remove('hidden');
+
+                // Process the image
+                processBackgroundRemoval();
+            };
+            img.onerror = function() {
+                alert('Error loading image. The file may be corrupted.');
+            };
+            img.src = e.target.result;
+        };
+        reader.onerror = function() {
+            alert('Error reading file. Please try again.');
+        };
+        reader.readAsDataURL(file);
+    }
+
+    function clearBgImage() {
+        bgImage = null;
+        bgResultBlob = null;
+        elements.bgFileInput.value = '';
+        elements.bgPreviewContainer.classList.add('hidden');
+        elements.bgDropZone.classList.remove('hidden');
+        elements.bgDownloadBtn.disabled = true;
+
+        // Clear canvas
+        const canvas = elements.bgPreviewCanvas;
+        canvas.width = 0;
+        canvas.height = 0;
+    }
+
+    async function initSelfieSegmentation() {
+        if (selfieSegmentation) return selfieSegmentation;
+
+        // Check if SelfieSegmentation is available
+        if (typeof SelfieSegmentation === 'undefined') {
+            throw new Error('MediaPipe library not loaded. Please refresh the page.');
+        }
+
+        selfieSegmentation = new SelfieSegmentation({
+            locateFile: (file) => `libs/mediapipe/${file}`
+        });
+
+        selfieSegmentation.setOptions({
+            modelSelection: 1, // 0 = general, 1 = landscape (better for full body)
+            selfieMode: false
+        });
+
+        await selfieSegmentation.initialize();
+        return selfieSegmentation;
+    }
+
+    async function processBackgroundRemoval() {
+        if (!bgImage) return;
+
+        const { bgPreviewCanvas, bgLoading, bgDownloadBtn } = elements;
+
+        // Show loading
+        bgLoading.classList.remove('hidden');
+        bgDownloadBtn.disabled = true;
+
+        try {
+            // Initialize segmentation if needed
+            const segmenter = await initSelfieSegmentation();
+
+            // Create a promise with timeout
+            const processPromise = new Promise((resolve, reject) => {
+                const timeout = setTimeout(() => {
+                    reject(new Error('Processing timeout. Try a smaller image.'));
+                }, BG_TIMEOUT);
+
+                segmenter.onResults((results) => {
+                    clearTimeout(timeout);
+                    resolve(results);
+                });
+
+                // Send image for processing
+                segmenter.send({ image: bgImage });
+            });
+
+            const results = await processPromise;
+
+            // Draw result with transparent background
+            bgPreviewCanvas.width = bgImage.naturalWidth;
+            bgPreviewCanvas.height = bgImage.naturalHeight;
+            const ctx = bgPreviewCanvas.getContext('2d');
+
+            // Draw original image
+            ctx.drawImage(bgImage, 0, 0);
+
+            // Get image data
+            const imageData = ctx.getImageData(0, 0, bgPreviewCanvas.width, bgPreviewCanvas.height);
+            const pixels = imageData.data;
+
+            // Get mask data
+            const maskCanvas = document.createElement('canvas');
+            maskCanvas.width = bgImage.naturalWidth;
+            maskCanvas.height = bgImage.naturalHeight;
+            const maskCtx = maskCanvas.getContext('2d');
+            maskCtx.drawImage(results.segmentationMask, 0, 0, maskCanvas.width, maskCanvas.height);
+            const maskData = maskCtx.getImageData(0, 0, maskCanvas.width, maskCanvas.height);
+            const maskPixels = maskData.data;
+
+            // Apply mask to alpha channel (mask is grayscale, use R channel)
+            for (let i = 0; i < pixels.length; i += 4) {
+                const maskValue = maskPixels[i]; // R channel of mask (0-255)
+                pixels[i + 3] = maskValue; // Set alpha
+            }
+
+            ctx.putImageData(imageData, 0, 0);
+
+            // Clean up mask canvas
+            maskCanvas.width = 0;
+            maskCanvas.height = 0;
+
+            // Generate result blob
+            const format = elements.bgFormatSelect.value;
+            const mimeType = `image/${format}`;
+
+            bgResultBlob = await new Promise(resolve => {
+                bgPreviewCanvas.toBlob(resolve, mimeType);
+            });
+
+            bgDownloadBtn.disabled = false;
+
+        } catch (err) {
+            console.error('Background removal error:', err);
+            alert('Error processing image: ' + err.message);
+            clearBgImage();
+        } finally {
+            bgLoading.classList.add('hidden');
+        }
+    }
+
+    function downloadBgResult() {
+        if (!bgResultBlob) {
+            alert('No processed image available.');
+            return;
+        }
+
+        const format = elements.bgFormatSelect.value;
+        const filename = getDownloadFilename(elements.bgFilename, '_nobg', format);
+        downloadBlob(bgResultBlob, filename);
+    }
+
+    // ===========================================
     // INITIALIZATION
     // ===========================================
 
@@ -1471,6 +1703,7 @@
         initCropTool();
         initHeicTool();
         initBulkTool();
+        initBackgroundTool();
     }
 
     // Start the app

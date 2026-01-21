@@ -35,6 +35,7 @@
                 <button class="tab-btn" data-tool="convert" role="tab" aria-selected="false">HEIC</button>
                 <button class="tab-btn" data-tool="bulk" role="tab" aria-selected="false">Bulk</button>
                 <button class="tab-btn" data-tool="metadata" role="tab" aria-selected="false">Strip EXIF</button>
+                <button class="tab-btn" data-tool="background" role="tab" aria-selected="false">Remove BG</button>
             </nav>
 
             <!-- Shared Upload Zone -->
@@ -377,6 +378,54 @@
                     </div>
                 </section>
 
+                <!-- BACKGROUND REMOVER PANEL -->
+                <section class="tool-panel" id="background-panel" role="tabpanel">
+                    <p class="tool-description">Remove backgrounds using AI. Works best with photos of people. Max 2048x2048px.</p>
+
+                    <div class="upload-zone bg-upload-zone" id="bg-drop-zone">
+                        <input type="file" id="bg-file-input" hidden accept="image/*">
+                        <div class="upload-content">
+                            <h3>Drop image here</h3>
+                            <p>or click to browse</p>
+                        </div>
+                    </div>
+
+                    <div class="bg-preview-container hidden" id="bg-preview-container">
+                        <div class="section-label">PREVIEW</div>
+                        <div class="bg-preview-wrapper">
+                            <canvas id="bg-preview-canvas"></canvas>
+                            <div class="bg-loading hidden" id="bg-loading">
+                                <div class="spinner"></div>
+                                <span>Processing...</span>
+                            </div>
+                        </div>
+                        <button class="clear-list-btn" id="bg-clear-btn">Remove Image</button>
+                    </div>
+
+                    <div class="control-group">
+                        <label class="section-label">OUTPUT FORMAT</label>
+                        <select id="bg-format-select" class="vintage-select">
+                            <option value="png" selected>PNG (Transparent)</option>
+                            <option value="webp">WebP (Transparent)</option>
+                        </select>
+                    </div>
+
+                    <div class="control-group">
+                        <label class="section-label">CUSTOM FILENAME</label>
+                        <div class="filename-input-wrapper">
+                            <input type="text" id="bg-filename" class="vintage-input filename-input" placeholder="image_nobg">
+                            <span class="filename-ext" id="bg-filename-ext">.png</span>
+                        </div>
+                    </div>
+
+                    <div class="action-footer">
+                        <button class="btn-primary" id="bg-download-btn" disabled>
+                            <span class="btn-text">DOWNLOAD</span>
+                            <span class="btn-sub">Background Removed</span>
+                        </button>
+                    </div>
+                </section>
+
             </div>
 
         </div>
@@ -393,8 +442,9 @@
 
     </main>
     
-    <script src="libs/jszip.min.js"></script>
-    <script src="libs/heic2any.min.js"></script>
+    <script src="libs/jszip.min.js" integrity="sha384-+mbV2IY1Zk/X1p/nWllGySJSUN8uMs+gUAN10Or95UBH0fpj6GfKgPmgC5EXieXG" crossorigin="anonymous"></script>
+    <script src="libs/heic2any.min.js" integrity="sha384-OTofQ0MEeiSgh62havBcemCIK0gqj809wX6UA0uPISNMRnR6NZyCdGzX3SbLrgwL" crossorigin="anonymous"></script>
+    <script src="libs/mediapipe/selfie_segmentation.js" integrity="sha384-J/3LshwuX+2viPOY3En4QiZvdvlffDhZYH5MsMuLGdwcoGcYSA7EV1jXFsys0gIb" crossorigin="anonymous"></script>
     <script src="script.js"></script>
     <script defer src="/_vercel/insights/script.js"></script>
 </body>

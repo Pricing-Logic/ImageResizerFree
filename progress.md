@@ -34,15 +34,11 @@
   - 100 file limit, 500MB total limit
   - Self-hosted JSZip (~97KB)
 
----
-
-## Upcoming
-
-### Phase 3: ML-Based (Requires CSP Change)
-- [ ] **Background Remover** - AI-powered background removal
-  - Requires: MediaPipe Selfie Segmentation (~2MB, self-hosted)
-  - CSP change: add `'wasm-unsafe-eval'` to script-src
-  - Security: 2048x2048 max input, 30s timeout
+### Phase 3: ML-Based
+- [x] **Background Remover** - AI-powered background removal
+  - Self-hosted MediaPipe Selfie Segmentation (~11.5MB)
+  - CSP updated: added `'wasm-unsafe-eval'` to script-src
+  - Security: 2048x2048 max input, 30s timeout, 50MB file limit
   - All processing remains client-side
 
 ---
@@ -59,7 +55,7 @@
 | Strict CSP headers | ✅ |
 | No inline scripts/styles | ✅ |
 | Self-hosted fonts (no external requests) | ✅ |
-| SRI hashes for dependencies | ⏳ Phase 2 |
+| SRI hashes for dependencies | ✅ |
 
 ---
 
@@ -67,6 +63,7 @@
 
 | Hash | Description |
 |------|-------------|
+| `7e43ac7` | Add Phase 3 Background Remover + SRI hashes + test suite |
 | `45ee756` | Add Phase 2 tools: HEIC Converter and Bulk Rename |
 | `006b2ac` | Add custom filename option for all tools |
 | `d5e8cb8` | Update progress.md with analytics and recent commits |

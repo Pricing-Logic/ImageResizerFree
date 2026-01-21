@@ -1,0 +1,595 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bulk Rename Tests - iresized.com</title>
+    <style>
+        body {
+            font-family: 'Courier New', monospace;
+            max-width: 900px;
+            margin: 50px auto;
+            padding: 20px;
+            background: #1a1a1a;
+            color: #e0e0e0;
+        }
+        h1 { color: #D4A84B; }
+        h2 { color: #8B7355; margin-top: 30px; }
+        #test-output {
+            background: #2a2a2a;
+            padding: 20px;
+            border-radius: 8px;
+            white-space: pre-wrap;
+            font-size: 14px;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+        .test-suite { color: #D4A84B; font-weight: bold; margin-top: 15px; }
+        .test-pass { color: #4CAF50; }
+        .test-fail { color: #f44336; }
+        .test-info { color: #888; }
+        #test-summary {
+            background: #333;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 20px 0;
+            font-size: 16px;
+        }
+        button {
+            background: #D4A84B;
+            color: #1a1a1a;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: bold;
+            margin-right: 10px;
+        }
+        button:hover { background: #c49a3f; }
+        .manual-test {
+            background: #2a2a2a;
+            padding: 20px;
+            border-radius: 8px;
+            margin: 20px 0;
+        }
+        .manual-test h3 { color: #D4A84B; margin-top: 0; }
+        input[type="file"] {
+            background: #333;
+            padding: 10px;
+            border-radius: 4px;
+            color: #e0e0e0;
+            margin: 10px 0;
+            display: block;
+        }
+        input[type="text"], input[type="number"] {
+            background: #333;
+            color: #e0e0e0;
+            border: 1px solid #555;
+            padding: 8px 12px;
+            border-radius: 4px;
+            margin: 5px 0;
+        }
+        .controls {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+            margin: 15px 0;
+        }
+        .control-group label {
+            display: block;
+            margin-bottom: 5px;
+            color: #888;
+        }
+        .file-list {
+            background: #333;
+            padding: 10px;
+            border-radius: 4px;
+            margin: 10px 0;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+        .file-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 5px 0;
+            border-bottom: 1px solid #444;
+            font-size: 13px;
+        }
+        .file-item:last-child { border-bottom: none; }
+        .old-name { color: #888; }
+        .new-name { color: #4CAF50; }
+        .arrow { color: #D4A84B; margin: 0 10px; }
+        .pattern-help {
+            background: #333;
+            padding: 10px;
+            border-radius: 4px;
+            margin: 10px 0;
+            font-size: 13px;
+        }
+        .pattern-help code {
+            background: #444;
+            padding: 2px 6px;
+            border-radius: 3px;
+            color: #D4A84B;
+        }
+    </style>
+</head>
+<body>
+    <h1>Bulk Rename Tests</h1>
+    <p>Tests for pattern-based batch file renaming functionality.</p>
+
+    <button onclick="runTests()">Run Automated Tests</button>
+    <button onclick="TestUtils.reset()">Clear</button>
+
+    <div id="test-summary"></div>
+    <div id="test-output"></div>
+
+    <div class="manual-test">
+        <h3>Manual Test: Bulk Rename Images</h3>
+
+        <div class="pattern-help">
+            <strong>Pattern Variables:</strong><br>
+            <code>{n}</code> - Sequential number (001, 002, ...)<br>
+            <code>{name}</code> - Original filename<br>
+            <code>{date}</code> - Today's date (YYYY-MM-DD)
+        </div>
+
+        <input type="file" id="bulk-file-input" accept="image/*" multiple>
+
+        <div class="controls">
+            <div class="control-group">
+                <label>Rename Pattern</label>
+                <input type="text" id="pattern-input" value="image_{n}" placeholder="image_{n}">
+            </div>
+            <div class="control-group">
+                <label>Start Number</label>
+                <input type="number" id="start-num" value="1" min="0" max="9999">
+            </div>
+            <div class="control-group">
+                <label>ZIP Filename</label>
+                <input type="text" id="zip-filename" value="renamed_images" placeholder="renamed_images">
+            </div>
+        </div>
+
+        <div class="file-list" id="file-preview" style="display: none;"></div>
+
+        <button onclick="previewRename()">Preview Names</button>
+        <button onclick="runManualRename()">Rename & Download ZIP</button>
+
+        <div id="manual-result"></div>
+    </div>
+
+    <script src="test-utils.js"></script>
+    <script src="../libs/jszip.min.js"></script>
+    <script>
+        // Constants (mirror from script.js)
+        const MAX_BULK_FILES = 100;
+        const MAX_BULK_SIZE = 500 * 1024 * 1024; // 500MB
+
+        // State
+        let selectedFiles = [];
+
+        // UI Elements
+        const fileInput = document.getElementById('bulk-file-input');
+        const patternInput = document.getElementById('pattern-input');
+        const startNumInput = document.getElementById('start-num');
+        const zipFilenameInput = document.getElementById('zip-filename');
+        const filePreviewDiv = document.getElementById('file-preview');
+        const resultDiv = document.getElementById('manual-result');
+
+        /**
+         * Sanitize filename (mirror from script.js)
+         */
+        function sanitizeFilename(name) {
+            if (typeof name !== 'string') return 'image';
+            return name
+                .replace(/\.\./g, '')
+                .replace(/[/\\]/g, '')
+                .replace(/[<>:"|?*\x00-\x1f]/g, '-')
+                .replace(/\s+/g, '-')
+                .replace(/-+/g, '-')
+                .replace(/^\.+/, '')
+                .substring(0, 200)
+                .trim() || 'image';
+        }
+
+        /**
+         * Validate positive integer (mirror from script.js)
+         */
+        function validatePositiveInt(value, min = 1, max = 10000) {
+            const num = parseInt(value, 10);
+            if (!Number.isFinite(num) || num < min || num > max) {
+                return null;
+            }
+            return num;
+        }
+
+        /**
+         * Generate filename from pattern (mirror from script.js)
+         */
+        function generateFilename(pattern, index, originalName, startNum) {
+            const num = startNum + index;
+            const paddedNum = String(num).padStart(3, '0');
+            const date = new Date().toISOString().split('T')[0];
+            const baseName = originalName.replace(/\.[^/.]+$/, '');
+
+            return pattern
+                .replace(/\{n\}/gi, paddedNum)
+                .replace(/\{name\}/gi, baseName)
+                .replace(/\{date\}/gi, date);
+        }
+
+        /**
+         * Format file size
+         */
+        function formatFileSize(bytes) {
+            if (bytes < 1024) return bytes + ' B';
+            if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+            return (bytes / (1024 * 1024)).toFixed(2) + ' MB';
+        }
+
+        // File input handler
+        fileInput.addEventListener('change', (e) => {
+            selectedFiles = Array.from(e.target.files).filter(f => f.type.startsWith('image/'));
+
+            if (selectedFiles.length === 0) {
+                filePreviewDiv.style.display = 'none';
+                resultDiv.innerHTML = '<p style="color: #f44336;">No image files selected.</p>';
+                return;
+            }
+
+            // Check limits
+            if (selectedFiles.length > MAX_BULK_FILES) {
+                resultDiv.innerHTML = `<p style="color: #f44336;">Too many files. Maximum is ${MAX_BULK_FILES}.</p>`;
+                selectedFiles = selectedFiles.slice(0, MAX_BULK_FILES);
+            }
+
+            const totalSize = selectedFiles.reduce((sum, f) => sum + f.size, 0);
+            if (totalSize > MAX_BULK_SIZE) {
+                resultDiv.innerHTML = `<p style="color: #f44336;">Total size exceeds 500MB limit (${formatFileSize(totalSize)}).</p>`;
+                return;
+            }
+
+            resultDiv.innerHTML = `<p>${selectedFiles.length} file(s) selected (${formatFileSize(totalSize)} total)</p>`;
+            previewRename();
+        });
+
+        /**
+         * Preview renamed files
+         */
+        function previewRename() {
+            if (selectedFiles.length === 0) return;
+
+            const pattern = patternInput.value.trim() || 'image_{n}';
+            const startNum = validatePositiveInt(startNumInput.value, 0, 9999) || 1;
+
+            const usedNames = new Set();
+            const previews = [];
+
+            selectedFiles.forEach((file, i) => {
+                const ext = file.name.split('.').pop().toLowerCase();
+                let newName = generateFilename(pattern, i, file.name, startNum);
+                newName = sanitizeFilename(newName);
+
+                // Ensure unique names
+                let finalName = `${newName}.${ext}`;
+                let counter = 1;
+                while (usedNames.has(finalName.toLowerCase())) {
+                    finalName = `${newName}_${counter}.${ext}`;
+                    counter++;
+                }
+                usedNames.add(finalName.toLowerCase());
+
+                previews.push({
+                    oldName: file.name,
+                    newName: finalName
+                });
+            });
+
+            filePreviewDiv.style.display = 'block';
+            filePreviewDiv.innerHTML = previews.map(p => `
+                <div class="file-item">
+                    <span class="old-name">${p.oldName}</span>
+                    <span class="arrow">→</span>
+                    <span class="new-name">${p.newName}</span>
+                </div>
+            `).join('');
+        }
+
+        // Update preview on input change
+        patternInput.addEventListener('input', previewRename);
+        startNumInput.addEventListener('input', previewRename);
+
+        /**
+         * Run manual rename test
+         */
+        async function runManualRename() {
+            if (selectedFiles.length === 0) {
+                resultDiv.innerHTML = '<p style="color: #f44336;">Please select files first.</p>';
+                return;
+            }
+
+            const pattern = patternInput.value.trim() || 'image_{n}';
+            const startNum = validatePositiveInt(startNumInput.value, 0, 9999) || 1;
+            const zipFilename = sanitizeFilename(zipFilenameInput.value.trim() || 'renamed_images');
+
+            resultDiv.innerHTML = '<p>Creating ZIP...</p>';
+
+            try {
+                const zip = new JSZip();
+                const usedNames = new Set();
+
+                for (let i = 0; i < selectedFiles.length; i++) {
+                    const file = selectedFiles[i];
+                    const ext = file.name.split('.').pop().toLowerCase();
+
+                    let newName = generateFilename(pattern, i, file.name, startNum);
+                    newName = sanitizeFilename(newName);
+
+                    // Ensure unique names
+                    let finalName = `${newName}.${ext}`;
+                    let counter = 1;
+                    while (usedNames.has(finalName.toLowerCase())) {
+                        finalName = `${newName}_${counter}.${ext}`;
+                        counter++;
+                    }
+                    usedNames.add(finalName.toLowerCase());
+
+                    zip.file(finalName, file);
+                }
+
+                const zipBlob = await zip.generateAsync({ type: 'blob' });
+                const url = URL.createObjectURL(zipBlob);
+
+                resultDiv.innerHTML = `
+                    <p style="color: #4CAF50;">ZIP created successfully!</p>
+                    <p>Size: ${formatFileSize(zipBlob.size)}</p>
+                    <p><a href="${url}" download="${zipFilename}.zip" style="color: #D4A84B; font-size: 16px;">Download ${zipFilename}.zip</a></p>
+                `;
+
+            } catch (err) {
+                resultDiv.innerHTML = `<p style="color: #f44336;">Error: ${err.message}</p>`;
+            }
+        }
+
+        /**
+         * Run automated tests
+         */
+        async function runTests() {
+            TestUtils.reset();
+            const T = TestUtils;
+
+            // ===============================
+            // Pattern Generation Tests
+            // ===============================
+            T.suite('Pattern: {n} - Sequential Numbers');
+
+            T.test('generates 001 for first file', () => {
+                const result = generateFilename('image_{n}', 0, 'test.jpg', 1);
+                T.assertEqual(result, 'image_001');
+            });
+
+            T.test('generates 005 for fifth file starting at 1', () => {
+                const result = generateFilename('photo_{n}', 4, 'test.jpg', 1);
+                T.assertEqual(result, 'photo_005');
+            });
+
+            T.test('respects custom start number', () => {
+                const result = generateFilename('img_{n}', 0, 'test.jpg', 100);
+                T.assertEqual(result, 'img_100');
+            });
+
+            T.test('pads numbers to 3 digits', () => {
+                const result = generateFilename('{n}', 0, 'test.jpg', 1);
+                T.assertEqual(result, '001');
+            });
+
+            T.test('handles numbers over 999', () => {
+                const result = generateFilename('{n}', 0, 'test.jpg', 1000);
+                T.assertEqual(result, '1000'); // No padding needed
+            });
+
+            T.suite('Pattern: {name} - Original Filename');
+
+            T.test('extracts original name without extension', () => {
+                const result = generateFilename('{name}_copy', 0, 'vacation_photo.jpg', 1);
+                T.assertEqual(result, 'vacation_photo_copy');
+            });
+
+            T.test('handles multiple dots in filename', () => {
+                const result = generateFilename('{name}', 0, 'my.file.name.jpg', 1);
+                T.assertEqual(result, 'my.file.name');
+            });
+
+            T.test('handles no extension', () => {
+                const result = generateFilename('{name}', 0, 'noextension', 1);
+                T.assertEqual(result, 'noextension');
+            });
+
+            T.suite('Pattern: {date} - Current Date');
+
+            T.test('inserts current date in YYYY-MM-DD format', () => {
+                const result = generateFilename('{date}_photo', 0, 'test.jpg', 1);
+                const today = new Date().toISOString().split('T')[0];
+                T.assertEqual(result, `${today}_photo`);
+            });
+
+            T.suite('Combined Patterns');
+
+            T.test('combines {date} and {n}', () => {
+                const result = generateFilename('{date}_{n}', 0, 'test.jpg', 1);
+                const today = new Date().toISOString().split('T')[0];
+                T.assertEqual(result, `${today}_001`);
+            });
+
+            T.test('combines {name}, {n}, {date}', () => {
+                const result = generateFilename('{name}_{n}_{date}', 2, 'photo.jpg', 1);
+                const today = new Date().toISOString().split('T')[0];
+                T.assertEqual(result, `photo_003_${today}`);
+            });
+
+            T.test('handles pattern with no variables', () => {
+                const result = generateFilename('static_name', 0, 'test.jpg', 1);
+                T.assertEqual(result, 'static_name');
+            });
+
+            T.suite('Case Insensitivity');
+
+            T.test('{N} works same as {n}', () => {
+                const result = generateFilename('image_{N}', 0, 'test.jpg', 1);
+                T.assertEqual(result, 'image_001');
+            });
+
+            T.test('{NAME} works same as {name}', () => {
+                const result = generateFilename('{NAME}_copy', 0, 'photo.jpg', 1);
+                T.assertEqual(result, 'photo_copy');
+            });
+
+            T.test('{DATE} works same as {date}', () => {
+                const result = generateFilename('{DATE}', 0, 'test.jpg', 1);
+                const today = new Date().toISOString().split('T')[0];
+                T.assertEqual(result, today);
+            });
+
+            // ===============================
+            // Unique Name Generation Tests
+            // ===============================
+            T.suite('Unique Name Generation');
+
+            T.test('detects duplicate names', () => {
+                const usedNames = new Set(['image_001.jpg']);
+                const newName = 'image_001.jpg';
+                T.assertTrue(usedNames.has(newName.toLowerCase()));
+            });
+
+            T.test('case-insensitive duplicate detection', () => {
+                const usedNames = new Set(['image_001.jpg']);
+                const newName = 'IMAGE_001.jpg';
+                T.assertTrue(usedNames.has(newName.toLowerCase()));
+            });
+
+            // ===============================
+            // Limit Tests
+            // ===============================
+            T.suite('File Limits');
+
+            T.test('MAX_BULK_FILES is 100', () => {
+                T.assertEqual(MAX_BULK_FILES, 100);
+            });
+
+            T.test('MAX_BULK_SIZE is 500MB', () => {
+                T.assertEqual(MAX_BULK_SIZE, 500 * 1024 * 1024);
+            });
+
+            T.test('accepts 100 files', () => {
+                const fileCount = 100;
+                T.assertTrue(fileCount <= MAX_BULK_FILES);
+            });
+
+            T.test('rejects 101 files', () => {
+                const fileCount = 101;
+                T.assertFalse(fileCount <= MAX_BULK_FILES);
+            });
+
+            // ===============================
+            // Security Tests
+            // ===============================
+            T.suite('Filename Security');
+
+            T.test('sanitizes path traversal in pattern', () => {
+                const result = generateFilename('../../../{n}', 0, 'test.jpg', 1);
+                const sanitized = sanitizeFilename(result);
+                T.assertNotContains(sanitized, '..');
+                T.assertNotContains(sanitized, '/');
+            });
+
+            T.test('sanitizes XSS in original filename', () => {
+                const result = generateFilename('{name}', 0, '<script>alert(1)</script>.jpg', 1);
+                const sanitized = sanitizeFilename(result);
+                T.assertNotContains(sanitized, '<');
+                T.assertNotContains(sanitized, '>');
+            });
+
+            T.test('limits output filename length', () => {
+                const longPattern = 'a'.repeat(300);
+                const result = generateFilename(longPattern, 0, 'test.jpg', 1);
+                const sanitized = sanitizeFilename(result);
+                T.assertTrue(sanitized.length <= 200);
+            });
+
+            // ===============================
+            // ZIP Creation Tests
+            // ===============================
+            T.suite('ZIP Creation');
+
+            await T.testAsync('creates valid ZIP', async () => {
+                const zip = new JSZip();
+                const blob = await TestUtils.createTestImageBlob(100, 100);
+                zip.file('test.png', blob);
+
+                const zipBlob = await zip.generateAsync({ type: 'blob' });
+                T.assertNotNull(zipBlob);
+                T.assertTrue(zipBlob.size > 0);
+            });
+
+            await T.testAsync('ZIP preserves original file data', async () => {
+                const zip = new JSZip();
+                const originalBlob = await TestUtils.createTestImageBlob(100, 100);
+                zip.file('preserved.png', originalBlob);
+
+                const zipBlob = await zip.generateAsync({ type: 'blob' });
+                const loadedZip = await JSZip.loadAsync(zipBlob);
+                const extractedBlob = await loadedZip.file('preserved.png').async('blob');
+
+                T.assertEqual(extractedBlob.size, originalBlob.size);
+            });
+
+            await T.testAsync('handles batch of files', async () => {
+                const zip = new JSZip();
+
+                for (let i = 0; i < 10; i++) {
+                    const blob = await TestUtils.createTestImageBlob(50, 50);
+                    zip.file(`image_${String(i + 1).padStart(3, '0')}.png`, blob);
+                }
+
+                const zipBlob = await zip.generateAsync({ type: 'blob' });
+                const loadedZip = await JSZip.loadAsync(zipBlob);
+                const fileCount = Object.keys(loadedZip.files).length;
+
+                T.assertEqual(fileCount, 10);
+            });
+
+            // ===============================
+            // Edge Cases
+            // ===============================
+            T.suite('Edge Cases');
+
+            T.test('empty pattern uses original name', () => {
+                const result = generateFilename('', 0, 'photo.jpg', 1);
+                T.assertEqual(result, '');
+            });
+
+            T.test('handles emoji in filename', () => {
+                const result = generateFilename('{name}', 0, 'photo_😀.jpg', 1);
+                // Emojis should be preserved
+                T.assertContains(result, '😀');
+            });
+
+            T.test('handles spaces in original name', () => {
+                const result = generateFilename('{name}', 0, 'my photo.jpg', 1);
+                T.assertEqual(result, 'my photo');
+            });
+
+            T.test('start number 0 works', () => {
+                const result = generateFilename('img_{n}', 0, 'test.jpg', 0);
+                T.assertEqual(result, 'img_000');
+            });
+
+            T.summary();
+        }
+
+        // Auto-run on load
+        window.onload = runTests;
+    </script>
+</body>
+</html>

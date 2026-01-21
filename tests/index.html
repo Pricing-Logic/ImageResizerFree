@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Suite - iresized.com</title>
+    <style>
+        body {
+            font-family: 'Courier New', monospace;
+            max-width: 900px;
+            margin: 50px auto;
+            padding: 20px;
+            background: #1a1a1a;
+            color: #e0e0e0;
+        }
+        h1 {
+            color: #D4A84B;
+            border-bottom: 2px solid #D4A84B;
+            padding-bottom: 15px;
+        }
+        h2 {
+            color: #8B7355;
+            margin-top: 40px;
+        }
+        .test-card {
+            background: #2a2a2a;
+            border-radius: 8px;
+            padding: 20px;
+            margin: 15px 0;
+            border-left: 4px solid #D4A84B;
+        }
+        .test-card h3 {
+            margin-top: 0;
+            color: #D4A84B;
+        }
+        .test-card p {
+            color: #888;
+            margin: 10px 0;
+        }
+        .test-card a {
+            display: inline-block;
+            background: #D4A84B;
+            color: #1a1a1a;
+            padding: 8px 16px;
+            border-radius: 4px;
+            text-decoration: none;
+            font-weight: bold;
+            margin-top: 10px;
+        }
+        .test-card a:hover {
+            background: #c49a3f;
+        }
+        .badge {
+            display: inline-block;
+            padding: 3px 8px;
+            border-radius: 3px;
+            font-size: 12px;
+            margin-left: 10px;
+        }
+        .badge-auto {
+            background: #4CAF50;
+            color: white;
+        }
+        .badge-manual {
+            background: #2196F3;
+            color: white;
+        }
+        .info-box {
+            background: #333;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 20px 0;
+        }
+        .info-box h4 {
+            margin-top: 0;
+            color: #D4A84B;
+        }
+        ul {
+            padding-left: 20px;
+        }
+        li {
+            margin: 8px 0;
+        }
+        code {
+            background: #444;
+            padding: 2px 6px;
+            border-radius: 3px;
+            color: #D4A84B;
+        }
+        .run-all-btn {
+            background: #D4A84B;
+            color: #1a1a1a;
+            border: none;
+            padding: 15px 30px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: bold;
+            font-size: 16px;
+            margin: 20px 0;
+        }
+        .run-all-btn:hover {
+            background: #c49a3f;
+        }
+        #all-results {
+            margin-top: 20px;
+        }
+        .result-frame {
+            border: 2px solid #333;
+            border-radius: 8px;
+            margin: 10px 0;
+            overflow: hidden;
+        }
+        .result-frame h4 {
+            background: #333;
+            margin: 0;
+            padding: 10px 15px;
+            color: #D4A84B;
+        }
+        .result-frame iframe {
+            width: 100%;
+            height: 300px;
+            border: none;
+            background: #2a2a2a;
+        }
+    </style>
+</head>
+<body>
+    <h1>iresized.com Test Suite</h1>
+
+    <div class="info-box">
+        <h4>About These Tests</h4>
+        <p>This test suite validates the functionality and security of iresized.com tools. Tests are browser-based and run entirely client-side.</p>
+        <ul>
+            <li><span class="badge badge-auto">AUTO</span> - Automated tests that run immediately</li>
+            <li><span class="badge badge-manual">MANUAL</span> - Requires uploading test files</li>
+        </ul>
+    </div>
+
+    <button class="run-all-btn" onclick="runAllTests()">Run All Automated Tests</button>
+
+    <h2>Available Test Suites</h2>
+
+    <div class="test-card">
+        <h3>Security Functions <span class="badge badge-auto">AUTO</span></h3>
+        <p>Tests for core security utilities: <code>sanitizeFilename()</code>, <code>validatePositiveInt()</code>, and XSS prevention.</p>
+        <p><strong>Coverage:</strong> Path traversal prevention, dangerous character filtering, input validation, length limits</p>
+        <a href="test-security.html">Run Tests</a>
+    </div>
+
+    <div class="test-card">
+        <h3>Strip EXIF/Metadata <span class="badge badge-auto">AUTO</span> <span class="badge badge-manual">MANUAL</span></h3>
+        <p>Tests for metadata stripping via canvas re-encoding. Includes format conversion and quality settings.</p>
+        <p><strong>Coverage:</strong> EXIF removal, dimension preservation, format conversion, quality settings, memory cleanup</p>
+        <a href="test-strip-exif.html">Run Tests</a>
+    </div>
+
+    <div class="test-card">
+        <h3>HEIC Converter <span class="badge badge-auto">AUTO</span> <span class="badge badge-manual">MANUAL</span></h3>
+        <p>Tests for HEIC/HEIF to JPEG/PNG/WebP conversion using heic2any library.</p>
+        <p><strong>Coverage:</strong> Library loading, file validation, size limits, filename generation, ZIP creation</p>
+        <a href="test-heic-converter.html">Run Tests</a>
+    </div>
+
+    <div class="test-card">
+        <h3>Bulk Rename <span class="badge badge-auto">AUTO</span> <span class="badge badge-manual">MANUAL</span></h3>
+        <p>Tests for pattern-based batch file renaming with ZIP download.</p>
+        <p><strong>Coverage:</strong> Pattern parsing ({n}, {name}, {date}), unique name generation, file limits, ZIP creation</p>
+        <a href="test-bulk-rename.html">Run Tests</a>
+    </div>
+
+    <div id="all-results"></div>
+
+    <h2>Running Tests Locally</h2>
+
+    <div class="info-box">
+        <h4>Setup Instructions</h4>
+        <ol>
+            <li>Start a local server in the project root:
+                <br><code>npx serve .</code> or <code>python -m http.server 8000</code>
+            </li>
+            <li>Navigate to <code>http://localhost:PORT/tests/</code></li>
+            <li>Click "Run All Automated Tests" or open individual test pages</li>
+        </ol>
+
+        <h4>Manual Testing Requirements</h4>
+        <ul>
+            <li><strong>Strip EXIF:</strong> A JPEG photo from a camera/phone with GPS data</li>
+            <li><strong>HEIC Converter:</strong> HEIC/HEIF files from an iPhone</li>
+            <li><strong>Bulk Rename:</strong> Multiple image files (any format)</li>
+        </ul>
+    </div>
+
+    <h2>Test File Structure</h2>
+
+    <div class="info-box">
+        <pre style="margin: 0; color: #888;">
+tests/
+├── index.html           # This page - test suite overview
+├── test-utils.js        # Shared test utilities and assertions
+├── test-security.html   # Security function tests
+├── test-strip-exif.html # Strip EXIF/Metadata tests
+├── test-heic-converter.html # HEIC Converter tests
+└── test-bulk-rename.html    # Bulk Rename tests
+        </pre>
+    </div>
+
+    <script>
+        function runAllTests() {
+            const resultsDiv = document.getElementById('all-results');
+            resultsDiv.innerHTML = '<h2>All Test Results</h2>';
+
+            const tests = [
+                { name: 'Security Functions', url: 'test-security.html' },
+                { name: 'Strip EXIF', url: 'test-strip-exif.html' },
+                { name: 'HEIC Converter', url: 'test-heic-converter.html' },
+                { name: 'Bulk Rename', url: 'test-bulk-rename.html' }
+            ];
+
+            tests.forEach(test => {
+                const frame = document.createElement('div');
+                frame.className = 'result-frame';
+                frame.innerHTML = `
+                    <h4>${test.name}</h4>
+                    <iframe src="${test.url}"></iframe>
+                `;
+                resultsDiv.appendChild(frame);
+            });
+        }
+    </script>
+</body>
+</html>

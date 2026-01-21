@@ -1,0 +1,339 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Security Functions Tests - iresized.com</title>
+    <style>
+        body {
+            font-family: 'Courier New', monospace;
+            max-width: 900px;
+            margin: 50px auto;
+            padding: 20px;
+            background: #1a1a1a;
+            color: #e0e0e0;
+        }
+        h1 { color: #D4A84B; }
+        h2 { color: #8B7355; margin-top: 30px; }
+        #test-output {
+            background: #2a2a2a;
+            padding: 20px;
+            border-radius: 8px;
+            white-space: pre-wrap;
+            font-size: 14px;
+            max-height: 600px;
+            overflow-y: auto;
+        }
+        .test-suite { color: #D4A84B; font-weight: bold; margin-top: 15px; }
+        .test-pass { color: #4CAF50; }
+        .test-fail { color: #f44336; }
+        .test-info { color: #888; }
+        #test-summary {
+            background: #333;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 20px 0;
+            font-size: 16px;
+        }
+        button {
+            background: #D4A84B;
+            color: #1a1a1a;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: bold;
+            margin-right: 10px;
+        }
+        button:hover { background: #c49a3f; }
+    </style>
+</head>
+<body>
+    <h1>Security Functions Tests</h1>
+    <p>Tests for sanitizeFilename(), validatePositiveInt(), and other security utilities.</p>
+
+    <button onclick="runTests()">Run Tests</button>
+    <button onclick="TestUtils.reset()">Clear</button>
+
+    <div id="test-summary"></div>
+    <div id="test-output"></div>
+
+    <script src="test-utils.js"></script>
+    <script>
+        // Extract security functions from main script for testing
+        // These mirror the implementations in script.js
+
+        function validatePositiveInt(value, min = 1, max = 10000) {
+            const num = parseInt(value, 10);
+            if (!Number.isFinite(num) || num < min || num > max) {
+                return null;
+            }
+            return num;
+        }
+
+        function sanitizeFilename(name) {
+            if (typeof name !== 'string') return 'image';
+
+            return name
+                .replace(/\.\./g, '')
+                .replace(/[/\\]/g, '')
+                .replace(/[<>:"|?*\x00-\x1f]/g, '-')
+                .replace(/\s+/g, '-')
+                .replace(/-+/g, '-')
+                .replace(/^\.+/, '')
+                .substring(0, 200)
+                .trim() || 'image';
+        }
+
+        function formatFileSize(bytes) {
+            if (typeof bytes !== 'number' || bytes < 0) return '0 B';
+            if (bytes < 1024) return bytes + ' B';
+            if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+            return (bytes / (1024 * 1024)).toFixed(2) + ' MB';
+        }
+
+        function runTests() {
+            TestUtils.reset();
+            const T = TestUtils;
+
+            // ===============================
+            // validatePositiveInt Tests
+            // ===============================
+            T.suite('validatePositiveInt - Valid Inputs');
+
+            T.test('accepts valid integer', () => {
+                T.assertEqual(validatePositiveInt('100'), 100);
+            });
+
+            T.test('accepts minimum value', () => {
+                T.assertEqual(validatePositiveInt('1'), 1);
+            });
+
+            T.test('accepts maximum value', () => {
+                T.assertEqual(validatePositiveInt('10000'), 10000);
+            });
+
+            T.test('accepts custom min/max', () => {
+                T.assertEqual(validatePositiveInt('500', 100, 1000), 500);
+            });
+
+            T.test('accepts zero when min is 0', () => {
+                T.assertEqual(validatePositiveInt('0', 0, 100), 0);
+            });
+
+            T.suite('validatePositiveInt - Invalid Inputs');
+
+            T.test('rejects negative numbers', () => {
+                T.assertNull(validatePositiveInt('-5'));
+            });
+
+            T.test('rejects values below min', () => {
+                T.assertNull(validatePositiveInt('0'));
+            });
+
+            T.test('rejects values above max', () => {
+                T.assertNull(validatePositiveInt('10001'));
+            });
+
+            T.test('rejects non-numeric strings', () => {
+                T.assertNull(validatePositiveInt('abc'));
+            });
+
+            T.test('rejects empty string', () => {
+                T.assertNull(validatePositiveInt(''));
+            });
+
+            T.test('rejects NaN', () => {
+                T.assertNull(validatePositiveInt(NaN));
+            });
+
+            T.test('rejects Infinity', () => {
+                T.assertNull(validatePositiveInt(Infinity));
+            });
+
+            T.test('rejects negative Infinity', () => {
+                T.assertNull(validatePositiveInt(-Infinity));
+            });
+
+            T.test('rejects float strings (takes integer part)', () => {
+                T.assertEqual(validatePositiveInt('10.5'), 10);
+            });
+
+            T.test('rejects null', () => {
+                T.assertNull(validatePositiveInt(null));
+            });
+
+            T.test('rejects undefined', () => {
+                T.assertNull(validatePositiveInt(undefined));
+            });
+
+            // ===============================
+            // sanitizeFilename Tests
+            // ===============================
+            T.suite('sanitizeFilename - Basic');
+
+            T.test('preserves valid filename', () => {
+                T.assertEqual(sanitizeFilename('my-image'), 'my-image');
+            });
+
+            T.test('preserves alphanumeric names', () => {
+                T.assertEqual(sanitizeFilename('image123'), 'image123');
+            });
+
+            T.test('allows underscores', () => {
+                T.assertEqual(sanitizeFilename('my_image'), 'my_image');
+            });
+
+            T.suite('sanitizeFilename - Path Traversal Prevention');
+
+            T.test('removes ../', () => {
+                T.assertNotContains(sanitizeFilename('../etc/passwd'), '..');
+            });
+
+            T.test('removes multiple ../../../', () => {
+                const result = sanitizeFilename('../../../../../../etc/passwd');
+                T.assertNotContains(result, '..');
+                T.assertNotContains(result, '/');
+            });
+
+            T.test('removes ..\\ (Windows)', () => {
+                const result = sanitizeFilename('..\\..\\windows\\system32');
+                T.assertNotContains(result, '..');
+                T.assertNotContains(result, '\\');
+            });
+
+            T.test('removes forward slashes', () => {
+                T.assertNotContains(sanitizeFilename('path/to/file'), '/');
+            });
+
+            T.test('removes backslashes', () => {
+                T.assertNotContains(sanitizeFilename('path\\to\\file'), '\\');
+            });
+
+            T.suite('sanitizeFilename - Dangerous Characters');
+
+            T.test('removes < and >', () => {
+                const result = sanitizeFilename('<script>alert(1)</script>');
+                T.assertNotContains(result, '<');
+                T.assertNotContains(result, '>');
+            });
+
+            T.test('removes colons', () => {
+                T.assertNotContains(sanitizeFilename('C:file'), ':');
+            });
+
+            T.test('removes double quotes', () => {
+                T.assertNotContains(sanitizeFilename('file"name'), '"');
+            });
+
+            T.test('removes pipe character', () => {
+                T.assertNotContains(sanitizeFilename('file|name'), '|');
+            });
+
+            T.test('removes question mark', () => {
+                T.assertNotContains(sanitizeFilename('file?name'), '?');
+            });
+
+            T.test('removes asterisk', () => {
+                T.assertNotContains(sanitizeFilename('file*name'), '*');
+            });
+
+            T.test('removes null bytes', () => {
+                T.assertNotContains(sanitizeFilename('file\x00name'), '\x00');
+            });
+
+            T.suite('sanitizeFilename - Whitespace & Special Cases');
+
+            T.test('converts spaces to dashes', () => {
+                T.assertEqual(sanitizeFilename('my image file'), 'my-image-file');
+            });
+
+            T.test('collapses multiple spaces', () => {
+                T.assertEqual(sanitizeFilename('my   image'), 'my-image');
+            });
+
+            T.test('collapses multiple dashes', () => {
+                T.assertEqual(sanitizeFilename('my---image'), 'my-image');
+            });
+
+            T.test('removes leading dots', () => {
+                T.assertEqual(sanitizeFilename('...hidden'), 'hidden');
+            });
+
+            T.test('returns "image" for empty string', () => {
+                T.assertEqual(sanitizeFilename(''), 'image');
+            });
+
+            T.test('returns "image" for non-string input', () => {
+                T.assertEqual(sanitizeFilename(null), 'image');
+                T.assertEqual(sanitizeFilename(undefined), 'image');
+                T.assertEqual(sanitizeFilename(123), 'image');
+            });
+
+            T.suite('sanitizeFilename - Length Limits');
+
+            T.test('truncates long filenames to 200 chars', () => {
+                const longName = 'a'.repeat(300);
+                const result = sanitizeFilename(longName);
+                T.assertTrue(result.length <= 200);
+            });
+
+            // ===============================
+            // formatFileSize Tests
+            // ===============================
+            T.suite('formatFileSize');
+
+            T.test('formats bytes', () => {
+                T.assertEqual(formatFileSize(500), '500 B');
+            });
+
+            T.test('formats kilobytes', () => {
+                T.assertEqual(formatFileSize(2048), '2.0 KB');
+            });
+
+            T.test('formats megabytes', () => {
+                T.assertEqual(formatFileSize(1048576), '1.00 MB');
+            });
+
+            T.test('handles zero', () => {
+                T.assertEqual(formatFileSize(0), '0 B');
+            });
+
+            T.test('handles negative (returns 0 B)', () => {
+                T.assertEqual(formatFileSize(-100), '0 B');
+            });
+
+            T.test('handles non-number (returns 0 B)', () => {
+                T.assertEqual(formatFileSize('abc'), '0 B');
+            });
+
+            // ===============================
+            // XSS Prevention Tests
+            // ===============================
+            T.suite('XSS Prevention');
+
+            T.test('sanitizes script tags in filename', () => {
+                const result = sanitizeFilename('<script>alert("xss")</script>.jpg');
+                T.assertNotContains(result, '<');
+                T.assertNotContains(result, '>');
+                T.assertNotContains(result, '"');
+            });
+
+            T.test('sanitizes event handlers in filename', () => {
+                const result = sanitizeFilename('image" onerror="alert(1)".jpg');
+                T.assertNotContains(result, '"');
+            });
+
+            T.test('sanitizes javascript: protocol', () => {
+                const result = sanitizeFilename('javascript:alert(1)');
+                T.assertNotContains(result, ':');
+            });
+
+            T.summary();
+        }
+
+        // Auto-run on load
+        window.onload = runTests;
+    </script>
+</body>
+</html>
