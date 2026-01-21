@@ -26,12 +26,21 @@
         </header>
 
         <div class="app-card">
-            
+
+            <!-- Tool Navigation Tabs -->
+            <nav class="tool-tabs" role="tablist">
+                <button class="tab-btn active" data-tool="resize" role="tab" aria-selected="true">Resize</button>
+                <button class="tab-btn" data-tool="compress" role="tab" aria-selected="false">Compress</button>
+                <button class="tab-btn" data-tool="crop" role="tab" aria-selected="false">Crop</button>
+                <button class="tab-btn" data-tool="metadata" role="tab" aria-selected="false">Strip EXIF</button>
+            </nav>
+
+            <!-- Shared Upload Zone -->
             <div class="upload-zone" id="drop-zone">
                 <input type="file" id="file-input" hidden accept="image/*">
                 <div class="upload-content">
                     <div class="illustration-container">
-                                                <svg viewBox="0 0 100 100" class="vintage-icon camera-icon">
+                        <svg viewBox="0 0 100 100" class="vintage-icon camera-icon">
                             <path d="M20 35 L30 25 L70 25 L80 35 L90 35 C92 35 95 38 95 40 L95 80 C95 85 92 88 90 88 L10 88 C8 88 5 85 5 80 L5 40 C5 38 8 35 10 35 Z" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
                             <circle cx="50" cy="60" r="18" fill="none" stroke="currentColor" stroke-width="2"/>
                             <circle cx="50" cy="60" r="14" fill="none" stroke="currentColor" stroke-width="1"/>
@@ -43,8 +52,9 @@
                 </div>
             </div>
 
+            <!-- Shared Preview Area -->
             <div class="preview-area hidden" id="preview-area">
-                <div class="image-frame">
+                <div class="image-frame" id="image-frame">
                     <img id="image-preview" src="" alt="Preview">
                     <button class="remove-btn" id="remove-btn" title="Remove Image">×</button>
                 </div>
@@ -54,63 +64,186 @@
                 </div>
             </div>
 
+            <!-- Crop Canvas (hidden until crop tool active) -->
+            <div class="crop-canvas-container hidden" id="crop-canvas-container">
+                <canvas id="crop-canvas"></canvas>
+                <button class="remove-btn" id="crop-remove-btn" title="Remove Image">×</button>
+                <div class="file-info">
+                    <span id="crop-dims">0 x 0</span>
+                    <span id="crop-file-name">filename.jpg</span>
+                </div>
+            </div>
+
             <hr class="divider">
 
-            <div class="controls-section" id="controls-section">
-                
-                <div class="control-group">
-                    <label class="section-label">DIMENSIONS (PX)</label>
-                    <div class="dimension-inputs">
-                        <div class="input-wrapper">
-                            <label for="width">Width</label>
-                            <input type="number" id="width" class="vintage-input" placeholder="0000">
-                        </div>
-                        
-                        <button class="lock-btn active" id="lock-btn" title="Lock Aspect Ratio">
-                            <svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" fill="none" stroke-width="2">
-                                <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" />
-                                <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" />
-                            </svg>
-                        </button>
+            <!-- Tool Panels -->
+            <div class="tool-panels">
 
-                        <div class="input-wrapper">
-                            <label for="height">Height</label>
-                            <input type="number" id="height" class="vintage-input" placeholder="0000">
-                        </div>
-                    </div>
-                </div>
+                <!-- RESIZE PANEL -->
+                <section class="tool-panel active" id="resize-panel" role="tabpanel">
+                    <div class="control-group">
+                        <label class="section-label">DIMENSIONS (PX)</label>
+                        <div class="dimension-inputs">
+                            <div class="input-wrapper">
+                                <label for="width">Width</label>
+                                <input type="number" id="width" class="vintage-input" placeholder="0000">
+                            </div>
 
-                <div class="control-row">
-                    <div class="control-group flex-grow">
-                        <div class="label-row">
-                            <label class="section-label">QUALITY</label>
-                            <span class="value-badge" id="quality-val">80%</span>
-                        </div>
-                        <div class="slider-container">
-                            <input type="range" min="1" max="100" value="80" class="vintage-slider" id="quality-slider">
-                            <div class="ruler-marks">
-                                <span>0</span><span>50</span><span>100</span>
+                            <button class="lock-btn active" id="lock-btn" title="Lock Aspect Ratio">
+                                <svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" fill="none" stroke-width="2">
+                                    <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" />
+                                    <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" />
+                                </svg>
+                            </button>
+
+                            <div class="input-wrapper">
+                                <label for="height">Height</label>
+                                <input type="number" id="height" class="vintage-input" placeholder="0000">
                             </div>
                         </div>
                     </div>
 
+                    <div class="control-row">
+                        <div class="control-group flex-grow">
+                            <div class="label-row">
+                                <label class="section-label">QUALITY</label>
+                                <span class="value-badge" id="quality-val">80%</span>
+                            </div>
+                            <div class="slider-container">
+                                <input type="range" min="1" max="100" value="80" class="vintage-slider" id="quality-slider">
+                                <div class="ruler-marks">
+                                    <span>0</span><span>50</span><span>100</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="control-group">
+                            <label class="section-label">FORMAT</label>
+                            <select class="vintage-select" id="format-select">
+                                <option value="jpeg">JPEG</option>
+                                <option value="png">PNG</option>
+                                <option value="webp">WebP</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="action-footer">
+                        <button class="btn-primary" id="resize-btn">
+                            <span class="btn-text">RESIZE & DOWNLOAD</span>
+                            <span class="btn-sub">Quality Guaranteed</span>
+                        </button>
+                    </div>
+                </section>
+
+                <!-- COMPRESS PANEL -->
+                <section class="tool-panel" id="compress-panel" role="tabpanel">
+                    <p class="tool-description">Reduce file size without changing dimensions. Perfect for web optimization.</p>
+
+                    <div class="control-row">
+                        <div class="control-group flex-grow">
+                            <div class="label-row">
+                                <label class="section-label">QUALITY</label>
+                                <span class="value-badge" id="compress-quality-val">80%</span>
+                            </div>
+                            <div class="slider-container">
+                                <input type="range" min="1" max="100" value="80" class="vintage-slider" id="compress-quality-slider">
+                                <div class="ruler-marks">
+                                    <span>0</span><span>50</span><span>100</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="control-group">
+                            <label class="section-label">FORMAT</label>
+                            <select class="vintage-select" id="compress-format-select">
+                                <option value="jpeg">JPEG</option>
+                                <option value="webp">WebP</option>
+                                <option value="png">PNG</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="action-footer">
+                        <button class="btn-primary" id="compress-btn">
+                            <span class="btn-text">COMPRESS & DOWNLOAD</span>
+                            <span class="btn-sub">Same Size, Smaller File</span>
+                        </button>
+                    </div>
+                </section>
+
+                <!-- CROP PANEL -->
+                <section class="tool-panel" id="crop-panel" role="tabpanel">
+                    <p class="tool-description">Click and drag on the image to select your crop area.</p>
+
                     <div class="control-group">
-                        <label class="section-label">FORMAT</label>
-                        <select class="vintage-select" id="format-select">
+                        <label class="section-label">ASPECT RATIO</label>
+                        <div class="aspect-ratio-buttons">
+                            <button class="aspect-btn active" data-ratio="free">Free</button>
+                            <button class="aspect-btn" data-ratio="1:1">1:1</button>
+                            <button class="aspect-btn" data-ratio="16:9">16:9</button>
+                            <button class="aspect-btn" data-ratio="4:3">4:3</button>
+                            <button class="aspect-btn" data-ratio="3:2">3:2</button>
+                        </div>
+                    </div>
+
+                    <div class="control-row">
+                        <div class="control-group">
+                            <label class="section-label">SELECTION</label>
+                            <div class="crop-info">
+                                <span id="crop-selection-dims">Select area on image</span>
+                            </div>
+                        </div>
+
+                        <div class="control-group">
+                            <label class="section-label">FORMAT</label>
+                            <select class="vintage-select" id="crop-format-select">
+                                <option value="jpeg">JPEG</option>
+                                <option value="png">PNG</option>
+                                <option value="webp">WebP</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="action-footer">
+                        <button class="btn-primary" id="crop-btn">
+                            <span class="btn-text">CROP & DOWNLOAD</span>
+                            <span class="btn-sub">Precision Cuts</span>
+                        </button>
+                    </div>
+                </section>
+
+                <!-- STRIP EXIF PANEL -->
+                <section class="tool-panel" id="metadata-panel" role="tabpanel">
+                    <p class="tool-description">Remove all metadata from your image including GPS location, camera info, and timestamps. Protects your privacy when sharing photos online.</p>
+
+                    <div class="metadata-info">
+                        <div class="section-label">WHAT GETS REMOVED</div>
+                        <ul class="metadata-list">
+                            <li>GPS coordinates & location data</li>
+                            <li>Camera make, model & settings</li>
+                            <li>Date & time taken</li>
+                            <li>Software & editing history</li>
+                            <li>Thumbnail previews</li>
+                        </ul>
+                    </div>
+
+                    <div class="control-group">
+                        <label class="section-label">OUTPUT FORMAT</label>
+                        <select class="vintage-select" id="metadata-format-select">
                             <option value="jpeg">JPEG</option>
                             <option value="png">PNG</option>
                             <option value="webp">WebP</option>
                         </select>
                     </div>
-                </div>
 
-            </div>
+                    <div class="action-footer">
+                        <button class="btn-primary" id="metadata-btn">
+                            <span class="btn-text">STRIP & DOWNLOAD</span>
+                            <span class="btn-sub">Privacy Protected</span>
+                        </button>
+                    </div>
+                </section>
 
-            <div class="action-footer">
-                <button class="btn-primary" id="download-btn">
-                    <span class="btn-text">PROCESS & DOWNLOAD</span>
-                    <span class="btn-sub">Quality Guaranteed</span>
-                </button>
             </div>
 
         </div>
