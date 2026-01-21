@@ -22,6 +22,7 @@
   - [x] Enhanced: resize handles on corners and edges
   - [x] Enhanced: persistent selection when changing aspect ratio
   - [x] Enhanced: cursor feedback for interaction mode
+- [x] **Custom Filename** - Rename files before download (all tools)
 
 ---
 
@@ -67,6 +68,8 @@
 
 | Hash | Description |
 |------|-------------|
+| `006b2ac` | Add custom filename option for all tools |
+| `d5e8cb8` | Update progress.md with analytics and recent commits |
 | `3abfee8` | Add Vercel Web Analytics |
 | `d15b583` | Add progress.md tracking completed and upcoming tasks |
 | `4b9b4df` | Enhance crop tool with movable selection and resize handles |
