@@ -494,6 +494,25 @@ body {
     font-style: italic;
 }
 
+.suggest-link {
+    display: inline-block;
+    margin-top: 0.75rem;
+    padding: 0.4rem 1rem;
+    font-family: var(--font-heading);
+    font-size: 0.8rem;
+    font-style: normal;
+    color: var(--navy-blue);
+    text-decoration: none;
+    border: 1px solid var(--navy-blue);
+    border-radius: 3px;
+    transition: all 0.2s;
+}
+
+.suggest-link:hover {
+    background: var(--navy-blue);
+    color: #fff;
+}
+
 /* Responsive */
 @media (max-width: 600px) {
     .container {
