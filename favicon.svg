@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <!-- Cowboy hat -->
+  <!-- Hat brim -->
+  <ellipse cx="32" cy="48" rx="30" ry="8" fill="#8B2635"/>
+  <!-- Hat crown base -->
+  <path d="M14 48 C14 48 16 32 22 28 C26 25 28 24 32 24 C36 24 38 25 42 28 C48 32 50 48 50 48" fill="#8B2635"/>
+  <!-- Hat crown top indent -->
+  <path d="M22 28 C24 22 28 20 32 20 C36 20 40 22 42 28 C38 26 36 25 32 25 C28 25 26 26 22 28" fill="#6B1E29"/>
+  <!-- Hat band -->
+  <rect x="20" y="36" width="24" height="4" rx="1" fill="#D4A84B"/>
+  <!-- Band buckle -->
+  <rect x="29" y="35" width="6" height="6" rx="1" fill="#D4A84B" stroke="#6B1E29" stroke-width="0.5"/>
+</svg>
