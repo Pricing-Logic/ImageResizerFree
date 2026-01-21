@@ -24,20 +24,19 @@
   - [x] Enhanced: cursor feedback for interaction mode
 - [x] **Custom Filename** - Rename files before download (all tools)
 
+### Phase 2: Self-Hosted Dependencies
+- [x] **HEIC Converter** - Convert iPhone HEIC/HEIF to JPEG/PNG/WebP
+  - Batch conversion with ZIP download
+  - Quality slider, 50MB per file limit
+  - Self-hosted heic2any (~1.3MB)
+- [x] **Bulk Rename** - Pattern-based renaming with batch download
+  - Patterns: `{n}`, `{name}`, `{date}`
+  - 100 file limit, 500MB total limit
+  - Self-hosted JSZip (~97KB)
+
 ---
 
 ## Upcoming
-
-### Phase 2: Self-Hosted Dependencies
-- [ ] **Bulk Rename** - Pattern-based renaming with batch download
-  - Requires: JSZip (~90KB, self-hosted)
-  - Features: `{name}`, `{n}`, `{date}` patterns
-  - Security: filename sanitization, 100 file limit, 500MB total limit
-
-- [ ] **HEIC Converter** - Convert iPhone photos to standard formats
-  - Requires: heic2any (~800KB, self-hosted)
-  - Security: magic byte validation, 50MB file limit
-  - May need CSP update for WASM
 
 ### Phase 3: ML-Based (Requires CSP Change)
 - [ ] **Background Remover** - AI-powered background removal
@@ -68,6 +67,7 @@
 
 | Hash | Description |
 |------|-------------|
+| `45ee756` | Add Phase 2 tools: HEIC Converter and Bulk Rename |
 | `006b2ac` | Add custom filename option for all tools |
 | `d5e8cb8` | Update progress.md with analytics and recent commits |
 | `3abfee8` | Add Vercel Web Analytics |
