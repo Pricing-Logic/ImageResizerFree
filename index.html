@@ -32,6 +32,8 @@
                 <button class="tab-btn active" data-tool="resize" role="tab" aria-selected="true">Resize</button>
                 <button class="tab-btn" data-tool="compress" role="tab" aria-selected="false">Compress</button>
                 <button class="tab-btn" data-tool="crop" role="tab" aria-selected="false">Crop</button>
+                <button class="tab-btn" data-tool="convert" role="tab" aria-selected="false">HEIC</button>
+                <button class="tab-btn" data-tool="bulk" role="tab" aria-selected="false">Bulk</button>
                 <button class="tab-btn" data-tool="metadata" role="tab" aria-selected="false">Strip EXIF</button>
             </nav>
 
@@ -276,6 +278,105 @@
                     </div>
                 </section>
 
+                <!-- HEIC CONVERTER PANEL -->
+                <section class="tool-panel" id="convert-panel" role="tabpanel">
+                    <p class="tool-description">Convert HEIC/HEIF photos (iPhone format) to standard formats. Drop multiple files to batch convert.</p>
+
+                    <div class="upload-zone heic-upload-zone" id="heic-drop-zone">
+                        <input type="file" id="heic-file-input" hidden accept=".heic,.heif,image/heic,image/heif" multiple>
+                        <div class="upload-content">
+                            <h3>Drop HEIC files here</h3>
+                            <p>or click to browse (multiple files supported)</p>
+                        </div>
+                    </div>
+
+                    <div class="file-list-container hidden" id="heic-file-list-container">
+                        <div class="section-label">FILES TO CONVERT</div>
+                        <ul class="file-list" id="heic-file-list"></ul>
+                        <button class="clear-list-btn" id="heic-clear-btn">Clear All</button>
+                    </div>
+
+                    <div class="control-row">
+                        <div class="control-group">
+                            <label class="section-label">OUTPUT FORMAT</label>
+                            <select class="vintage-select" id="heic-format-select">
+                                <option value="jpeg">JPEG</option>
+                                <option value="png">PNG</option>
+                                <option value="webp">WebP</option>
+                            </select>
+                        </div>
+
+                        <div class="control-group flex-grow">
+                            <div class="label-row">
+                                <label class="section-label">QUALITY</label>
+                                <span class="value-badge" id="heic-quality-val">90%</span>
+                            </div>
+                            <div class="slider-container">
+                                <input type="range" min="1" max="100" value="90" class="vintage-slider" id="heic-quality-slider">
+                                <div class="ruler-marks">
+                                    <span>0</span><span>50</span><span>100</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="action-footer">
+                        <button class="btn-primary" id="heic-convert-btn">
+                            <span class="btn-text">CONVERT & DOWNLOAD</span>
+                            <span class="btn-sub">iPhone Compatible</span>
+                        </button>
+                    </div>
+                </section>
+
+                <!-- BULK RENAME PANEL -->
+                <section class="tool-panel" id="bulk-panel" role="tabpanel">
+                    <p class="tool-description">Rename multiple images with a pattern. Downloads as a ZIP file.</p>
+
+                    <div class="upload-zone bulk-upload-zone" id="bulk-drop-zone">
+                        <input type="file" id="bulk-file-input" hidden accept="image/*" multiple>
+                        <div class="upload-content">
+                            <h3>Drop multiple images here</h3>
+                            <p>or click to browse (up to 100 files)</p>
+                        </div>
+                    </div>
+
+                    <div class="file-list-container hidden" id="bulk-file-list-container">
+                        <div class="section-label">FILES TO RENAME (<span id="bulk-file-count">0</span>)</div>
+                        <ul class="file-list" id="bulk-file-list"></ul>
+                        <button class="clear-list-btn" id="bulk-clear-btn">Clear All</button>
+                    </div>
+
+                    <div class="control-group">
+                        <label class="section-label">NAMING PATTERN</label>
+                        <input type="text" id="bulk-pattern" class="vintage-input" placeholder="image_{n}" value="image_{n}">
+                        <div class="pattern-help">
+                            <code>{n}</code> = number (1, 2, 3...)
+                            <code>{name}</code> = original name
+                            <code>{date}</code> = today's date
+                        </div>
+                    </div>
+
+                    <div class="control-group">
+                        <label class="section-label">START NUMBER</label>
+                        <input type="number" id="bulk-start-num" class="vintage-input" value="1" min="0" max="9999">
+                    </div>
+
+                    <div class="control-group">
+                        <label class="section-label">ZIP FILENAME</label>
+                        <div class="filename-input-wrapper">
+                            <input type="text" id="bulk-zip-filename" class="vintage-input filename-input" placeholder="images" value="images">
+                            <span class="filename-ext">.zip</span>
+                        </div>
+                    </div>
+
+                    <div class="action-footer">
+                        <button class="btn-primary" id="bulk-rename-btn">
+                            <span class="btn-text">RENAME & DOWNLOAD ZIP</span>
+                            <span class="btn-sub">Batch Processing</span>
+                        </button>
+                    </div>
+                </section>
+
             </div>
 
         </div>
@@ -292,6 +393,8 @@
 
     </main>
     
+    <script src="libs/jszip.min.js"></script>
+    <script src="libs/heic2any.min.js"></script>
     <script src="script.js"></script>
     <script defer src="/_vercel/insights/script.js"></script>
 </body>

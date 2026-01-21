@@ -324,6 +324,105 @@ body {
     border-radius: 3px;
 }
 
+/* Bulk/HEIC Tool Specific */
+.heic-upload-zone,
+.bulk-upload-zone {
+    padding: 1.5rem 1rem;
+    margin-bottom: 1rem;
+}
+
+.heic-upload-zone h3,
+.bulk-upload-zone h3 {
+    font-size: 1.2rem;
+}
+
+.file-list-container {
+    margin-bottom: 1.5rem;
+    background: var(--input-bg);
+    border: 1px solid #D1C7B1;
+    border-radius: 4px;
+    padding: 1rem;
+}
+
+.file-list {
+    list-style: none;
+    max-height: 150px;
+    overflow-y: auto;
+    margin: 0.5rem 0;
+    padding: 0;
+}
+
+.file-list li {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.4rem 0.5rem;
+    border-bottom: 1px solid #E6DCC3;
+    font-family: var(--font-tech);
+    font-size: 0.85rem;
+}
+
+.file-list li:last-child {
+    border-bottom: none;
+}
+
+.file-list .file-name {
+    flex: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    margin-right: 1rem;
+}
+
+.file-list .file-size {
+    color: var(--faded-sage);
+    font-size: 0.75rem;
+}
+
+.file-list .remove-file-btn {
+    background: none;
+    border: none;
+    color: var(--barn-red);
+    cursor: pointer;
+    font-size: 1.1rem;
+    padding: 0 0.3rem;
+    line-height: 1;
+}
+
+.clear-list-btn {
+    display: block;
+    margin: 0.5rem auto 0;
+    padding: 0.3rem 1rem;
+    font-family: var(--font-heading);
+    font-size: 0.8rem;
+    background: transparent;
+    border: 1px solid var(--faded-sage);
+    color: var(--faded-sage);
+    cursor: pointer;
+    border-radius: 3px;
+    transition: all 0.2s;
+}
+
+.clear-list-btn:hover {
+    border-color: var(--barn-red);
+    color: var(--barn-red);
+}
+
+.pattern-help {
+    margin-top: 0.5rem;
+    font-size: 0.8rem;
+    color: var(--faded-sage);
+}
+
+.pattern-help code {
+    background: rgba(212, 168, 75, 0.2);
+    padding: 0.1rem 0.4rem;
+    border-radius: 3px;
+    font-family: var(--font-tech);
+    color: var(--navy-blue);
+    margin-right: 0.5rem;
+}
+
 /* --- Upload Zone --- */
 .upload-zone {
     border: 3px dashed var(--warm-gold);

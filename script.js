@@ -75,7 +75,30 @@
         metadataFormatSelect: document.getElementById('metadata-format-select'),
         metadataFilename: document.getElementById('metadata-filename'),
         metadataFilenameExt: document.getElementById('metadata-filename-ext'),
-        metadataBtn: document.getElementById('metadata-btn')
+        metadataBtn: document.getElementById('metadata-btn'),
+
+        // HEIC Converter
+        heicDropZone: document.getElementById('heic-drop-zone'),
+        heicFileInput: document.getElementById('heic-file-input'),
+        heicFileListContainer: document.getElementById('heic-file-list-container'),
+        heicFileList: document.getElementById('heic-file-list'),
+        heicClearBtn: document.getElementById('heic-clear-btn'),
+        heicFormatSelect: document.getElementById('heic-format-select'),
+        heicQualitySlider: document.getElementById('heic-quality-slider'),
+        heicQualityVal: document.getElementById('heic-quality-val'),
+        heicConvertBtn: document.getElementById('heic-convert-btn'),
+
+        // Bulk Rename
+        bulkDropZone: document.getElementById('bulk-drop-zone'),
+        bulkFileInput: document.getElementById('bulk-file-input'),
+        bulkFileListContainer: document.getElementById('bulk-file-list-container'),
+        bulkFileList: document.getElementById('bulk-file-list'),
+        bulkFileCount: document.getElementById('bulk-file-count'),
+        bulkClearBtn: document.getElementById('bulk-clear-btn'),
+        bulkPattern: document.getElementById('bulk-pattern'),
+        bulkStartNum: document.getElementById('bulk-start-num'),
+        bulkZipFilename: document.getElementById('bulk-zip-filename'),
+        bulkRenameBtn: document.getElementById('bulk-rename-btn')
     };
 
     // ===========================================
@@ -1068,6 +1091,353 @@
     }
 
     // ===========================================
+    // HEIC CONVERTER TOOL
+    // ===========================================
+
+    let heicFiles = [];
+
+    function initHeicTool() {
+        const { heicDropZone, heicFileInput, heicClearBtn, heicQualitySlider,
+                heicQualityVal, heicConvertBtn } = elements;
+
+        heicDropZone.addEventListener('click', () => heicFileInput.click());
+        heicDropZone.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            heicDropZone.classList.add('drag-over');
+        });
+        heicDropZone.addEventListener('dragleave', (e) => {
+            e.preventDefault();
+            heicDropZone.classList.remove('drag-over');
+        });
+        heicDropZone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            heicDropZone.classList.remove('drag-over');
+            handleHeicFiles(e.dataTransfer.files);
+        });
+        heicFileInput.addEventListener('change', (e) => {
+            handleHeicFiles(e.target.files);
+        });
+
+        heicClearBtn.addEventListener('click', clearHeicFiles);
+        heicQualitySlider.addEventListener('input', () => {
+            heicQualityVal.textContent = heicQualitySlider.value + '%';
+        });
+        heicConvertBtn.addEventListener('click', () => safeExecute(processHeicConvert, 'HEIC Convert'));
+    }
+
+    function handleHeicFiles(fileList) {
+        const files = Array.from(fileList);
+
+        // Filter for HEIC/HEIF files
+        const heicFilesNew = files.filter(f => {
+            const ext = f.name.toLowerCase();
+            return ext.endsWith('.heic') || ext.endsWith('.heif');
+        });
+
+        if (heicFilesNew.length === 0) {
+            alert('Please select HEIC or HEIF files.');
+            return;
+        }
+
+        // Check file size limit (50MB per file)
+        for (const file of heicFilesNew) {
+            if (file.size > 50 * 1024 * 1024) {
+                alert(`File "${file.name}" is too large. Maximum size is 50MB per file.`);
+                return;
+            }
+        }
+
+        heicFiles = heicFiles.concat(heicFilesNew);
+        renderHeicFileList();
+    }
+
+    function renderHeicFileList() {
+        const { heicFileListContainer, heicFileList, heicDropZone } = elements;
+
+        if (heicFiles.length === 0) {
+            heicFileListContainer.classList.add('hidden');
+            heicDropZone.classList.remove('hidden');
+            return;
+        }
+
+        heicDropZone.classList.add('hidden');
+        heicFileListContainer.classList.remove('hidden');
+        heicFileList.innerHTML = '';
+
+        heicFiles.forEach((file, index) => {
+            const li = document.createElement('li');
+
+            const nameSpan = document.createElement('span');
+            nameSpan.className = 'file-name';
+            nameSpan.textContent = file.name;
+
+            const sizeSpan = document.createElement('span');
+            sizeSpan.className = 'file-size';
+            sizeSpan.textContent = formatFileSize(file.size);
+
+            const removeBtn = document.createElement('button');
+            removeBtn.className = 'remove-file-btn';
+            removeBtn.textContent = '×';
+            removeBtn.addEventListener('click', () => {
+                heicFiles.splice(index, 1);
+                renderHeicFileList();
+            });
+
+            li.appendChild(nameSpan);
+            li.appendChild(sizeSpan);
+            li.appendChild(removeBtn);
+            heicFileList.appendChild(li);
+        });
+    }
+
+    function clearHeicFiles() {
+        heicFiles = [];
+        elements.heicFileInput.value = '';
+        renderHeicFileList();
+    }
+
+    async function processHeicConvert() {
+        if (heicFiles.length === 0) {
+            alert('Please add HEIC files first.');
+            return;
+        }
+
+        const format = elements.heicFormatSelect.value;
+        const quality = parseInt(elements.heicQualitySlider.value, 10) / 100;
+        const mimeType = `image/${format === 'jpg' ? 'jpeg' : format}`;
+
+        // Check if heic2any is available
+        if (typeof heic2any === 'undefined') {
+            alert('HEIC converter library not loaded. Please refresh the page.');
+            return;
+        }
+
+        elements.heicConvertBtn.disabled = true;
+        elements.heicConvertBtn.querySelector('.btn-text').textContent = 'CONVERTING...';
+
+        try {
+            if (heicFiles.length === 1) {
+                // Single file - download directly
+                const blob = await heic2any({
+                    blob: heicFiles[0],
+                    toType: mimeType,
+                    quality: quality
+                });
+
+                const resultBlob = Array.isArray(blob) ? blob[0] : blob;
+                const baseName = heicFiles[0].name.replace(/\.(heic|heif)$/i, '');
+                downloadBlob(resultBlob, `${sanitizeFilename(baseName)}.${format}`);
+            } else {
+                // Multiple files - create ZIP
+                const zip = new JSZip();
+
+                for (let i = 0; i < heicFiles.length; i++) {
+                    try {
+                        const blob = await heic2any({
+                            blob: heicFiles[i],
+                            toType: mimeType,
+                            quality: quality
+                        });
+
+                        const resultBlob = Array.isArray(blob) ? blob[0] : blob;
+                        const baseName = heicFiles[i].name.replace(/\.(heic|heif)$/i, '');
+                        zip.file(`${sanitizeFilename(baseName)}.${format}`, resultBlob);
+                    } catch (err) {
+                        console.error(`Error converting ${heicFiles[i].name}:`, err);
+                    }
+                }
+
+                const zipBlob = await zip.generateAsync({ type: 'blob' });
+                downloadBlob(zipBlob, 'converted_images.zip');
+            }
+
+            clearHeicFiles();
+        } catch (err) {
+            console.error('HEIC conversion error:', err);
+            alert('Error converting HEIC files. Some files may not be valid HEIC format.');
+        } finally {
+            elements.heicConvertBtn.disabled = false;
+            elements.heicConvertBtn.querySelector('.btn-text').textContent = 'CONVERT & DOWNLOAD';
+        }
+    }
+
+    // ===========================================
+    // BULK RENAME TOOL
+    // ===========================================
+
+    let bulkFiles = [];
+    const MAX_BULK_FILES = 100;
+    const MAX_BULK_SIZE = 500 * 1024 * 1024; // 500MB total
+
+    function initBulkTool() {
+        const { bulkDropZone, bulkFileInput, bulkClearBtn, bulkRenameBtn } = elements;
+
+        bulkDropZone.addEventListener('click', () => bulkFileInput.click());
+        bulkDropZone.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            bulkDropZone.classList.add('drag-over');
+        });
+        bulkDropZone.addEventListener('dragleave', (e) => {
+            e.preventDefault();
+            bulkDropZone.classList.remove('drag-over');
+        });
+        bulkDropZone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            bulkDropZone.classList.remove('drag-over');
+            handleBulkFiles(e.dataTransfer.files);
+        });
+        bulkFileInput.addEventListener('change', (e) => {
+            handleBulkFiles(e.target.files);
+        });
+
+        bulkClearBtn.addEventListener('click', clearBulkFiles);
+        bulkRenameBtn.addEventListener('click', () => safeExecute(processBulkRename, 'Bulk Rename'));
+    }
+
+    function handleBulkFiles(fileList) {
+        const files = Array.from(fileList);
+
+        // Filter for images only
+        const imageFiles = files.filter(f => f.type.startsWith('image/'));
+
+        if (imageFiles.length === 0) {
+            alert('Please select image files.');
+            return;
+        }
+
+        // Check file count limit
+        if (bulkFiles.length + imageFiles.length > MAX_BULK_FILES) {
+            alert(`Maximum ${MAX_BULK_FILES} files allowed. You have ${bulkFiles.length} files.`);
+            return;
+        }
+
+        // Check total size limit
+        const currentSize = bulkFiles.reduce((sum, f) => sum + f.size, 0);
+        const newSize = imageFiles.reduce((sum, f) => sum + f.size, 0);
+
+        if (currentSize + newSize > MAX_BULK_SIZE) {
+            alert('Total file size exceeds 500MB limit.');
+            return;
+        }
+
+        bulkFiles = bulkFiles.concat(imageFiles);
+        renderBulkFileList();
+    }
+
+    function renderBulkFileList() {
+        const { bulkFileListContainer, bulkFileList, bulkFileCount, bulkDropZone } = elements;
+
+        if (bulkFiles.length === 0) {
+            bulkFileListContainer.classList.add('hidden');
+            bulkDropZone.classList.remove('hidden');
+            return;
+        }
+
+        bulkDropZone.classList.add('hidden');
+        bulkFileListContainer.classList.remove('hidden');
+        bulkFileCount.textContent = bulkFiles.length;
+        bulkFileList.innerHTML = '';
+
+        bulkFiles.forEach((file, index) => {
+            const li = document.createElement('li');
+
+            const nameSpan = document.createElement('span');
+            nameSpan.className = 'file-name';
+            nameSpan.textContent = file.name;
+
+            const sizeSpan = document.createElement('span');
+            sizeSpan.className = 'file-size';
+            sizeSpan.textContent = formatFileSize(file.size);
+
+            const removeBtn = document.createElement('button');
+            removeBtn.className = 'remove-file-btn';
+            removeBtn.textContent = '×';
+            removeBtn.addEventListener('click', () => {
+                bulkFiles.splice(index, 1);
+                renderBulkFileList();
+            });
+
+            li.appendChild(nameSpan);
+            li.appendChild(sizeSpan);
+            li.appendChild(removeBtn);
+            bulkFileList.appendChild(li);
+        });
+    }
+
+    function clearBulkFiles() {
+        bulkFiles = [];
+        elements.bulkFileInput.value = '';
+        renderBulkFileList();
+    }
+
+    function generateFilename(pattern, index, originalName, startNum) {
+        const num = startNum + index;
+        const paddedNum = String(num).padStart(3, '0');
+        const date = new Date().toISOString().split('T')[0];
+        const baseName = originalName.replace(/\.[^/.]+$/, '');
+
+        return pattern
+            .replace(/\{n\}/gi, paddedNum)
+            .replace(/\{name\}/gi, baseName)
+            .replace(/\{date\}/gi, date);
+    }
+
+    async function processBulkRename() {
+        if (bulkFiles.length === 0) {
+            alert('Please add files first.');
+            return;
+        }
+
+        const pattern = elements.bulkPattern.value.trim() || 'image_{n}';
+        const startNum = validatePositiveInt(elements.bulkStartNum.value, 0, 9999) || 1;
+        const zipFilename = sanitizeFilename(elements.bulkZipFilename.value.trim() || 'images');
+
+        // Check if JSZip is available
+        if (typeof JSZip === 'undefined') {
+            alert('ZIP library not loaded. Please refresh the page.');
+            return;
+        }
+
+        elements.bulkRenameBtn.disabled = true;
+        elements.bulkRenameBtn.querySelector('.btn-text').textContent = 'PROCESSING...';
+
+        try {
+            const zip = new JSZip();
+            const usedNames = new Set();
+
+            for (let i = 0; i < bulkFiles.length; i++) {
+                const file = bulkFiles[i];
+                const ext = file.name.split('.').pop().toLowerCase();
+
+                let newName = generateFilename(pattern, i, file.name, startNum);
+                newName = sanitizeFilename(newName);
+
+                // Ensure unique names
+                let finalName = `${newName}.${ext}`;
+                let counter = 1;
+                while (usedNames.has(finalName.toLowerCase())) {
+                    finalName = `${newName}_${counter}.${ext}`;
+                    counter++;
+                }
+                usedNames.add(finalName.toLowerCase());
+
+                zip.file(finalName, file);
+            }
+
+            const zipBlob = await zip.generateAsync({ type: 'blob' });
+            downloadBlob(zipBlob, `${zipFilename}.zip`);
+
+            clearBulkFiles();
+        } catch (err) {
+            console.error('Bulk rename error:', err);
+            alert('Error creating ZIP file. Please try again.');
+        } finally {
+            elements.bulkRenameBtn.disabled = false;
+            elements.bulkRenameBtn.querySelector('.btn-text').textContent = 'RENAME & DOWNLOAD ZIP';
+        }
+    }
+
+    // ===========================================
     // INITIALIZATION
     // ===========================================
 
@@ -1078,6 +1448,8 @@
         initCompressTool();
         initMetadataTool();
         initCropTool();
+        initHeicTool();
+        initBulkTool();
     }
 
     // Start the app
