@@ -34,6 +34,7 @@
         dropZone: document.getElementById('drop-zone'),
         fileInput: document.getElementById('file-input'),
         previewArea: document.getElementById('preview-area'),
+        mainDivider: document.getElementById('main-divider'),
         imagePreview: document.getElementById('image-preview'),
         removeBtn: document.getElementById('remove-btn'),
         originalDims: document.getElementById('original-dims'),
@@ -261,26 +262,30 @@
         const isMultiFileTool = (tool === 'convert' || tool === 'bulk');
 
         if (isMultiFileTool) {
-            // Hide shared upload zone for multi-file tools
+            // Hide shared upload zone and divider for multi-file tools
             elements.dropZone.classList.add('hidden');
             elements.previewArea.classList.add('hidden');
             elements.cropCanvasContainer.classList.add('hidden');
+            elements.mainDivider.classList.add('hidden');
         } else if (tool === 'crop' && originalImage) {
             // Crop tool uses canvas
             elements.dropZone.classList.add('hidden');
             elements.previewArea.classList.add('hidden');
             elements.cropCanvasContainer.classList.remove('hidden');
+            elements.mainDivider.classList.remove('hidden');
             initCropCanvas();
         } else if (originalImage) {
             // Other single-image tools show preview
             elements.dropZone.classList.add('hidden');
             elements.cropCanvasContainer.classList.add('hidden');
             elements.previewArea.classList.remove('hidden');
+            elements.mainDivider.classList.remove('hidden');
         } else {
             // No image loaded - show shared upload zone
             elements.dropZone.classList.remove('hidden');
             elements.previewArea.classList.add('hidden');
             elements.cropCanvasContainer.classList.add('hidden');
+            elements.mainDivider.classList.remove('hidden');
         }
     }
 
