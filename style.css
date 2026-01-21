@@ -85,7 +85,7 @@ body {
     min-height: 100vh;
     display: flex;
     justify-content: center;
-    align-items: center;
+    align-items: flex-start; /* Prevents vertical jumping when tab content height changes */
     position: relative;
     overflow-x: hidden;
     padding-top: 50px;
@@ -109,6 +109,7 @@ body {
     width: 100%;
     max-width: 650px;
     padding: 2rem;
+    padding-top: 3rem; /* Space below fixed banner */
     position: relative;
     z-index: 2;
 }
