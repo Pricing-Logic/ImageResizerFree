@@ -36,6 +36,7 @@
                 <button class="tab-btn" data-tool="bulk" role="tab" aria-selected="false">Bulk</button>
                 <button class="tab-btn" data-tool="metadata" role="tab" aria-selected="false">Strip EXIF</button>
                 <button class="tab-btn" data-tool="background" role="tab" aria-selected="false">Remove BG</button>
+                <button class="tab-btn" data-tool="advancedbg" role="tab" aria-selected="false">Advanced BG</button>
             </nav>
 
             <!-- Shared Upload Zone -->
@@ -380,7 +381,7 @@
 
                 <!-- BACKGROUND REMOVER PANEL -->
                 <section class="tool-panel" id="background-panel" role="tabpanel">
-                    <p class="tool-description">Remove backgrounds using AI. Works best with photos of people. Max 2048x2048px.</p>
+                    <p class="tool-description">Quick background removal for photos of people. Max 2048x2048px. For products, objects, or animals, use the Advanced BG tool.</p>
 
                     <div class="upload-zone bg-upload-zone" id="bg-drop-zone">
                         <input type="file" id="bg-file-input" hidden accept="image/*">
@@ -420,6 +421,61 @@
 
                     <div class="action-footer">
                         <button class="btn-primary" id="bg-download-btn" disabled>
+                            <span class="btn-text">DOWNLOAD</span>
+                            <span class="btn-sub">Background Removed</span>
+                        </button>
+                    </div>
+                </section>
+
+                <!-- ADVANCED BACKGROUND REMOVER PANEL -->
+                <section class="tool-panel" id="advancedbg-panel" role="tabpanel">
+                    <p class="tool-description">Advanced AI background removal. Works on products, objects, animals, people - anything!</p>
+
+                    <div class="upload-zone advbg-upload-zone" id="advbg-drop-zone">
+                        <input type="file" id="advbg-file-input" hidden accept="image/*">
+                        <div class="upload-content">
+                            <h3>Drop image here</h3>
+                            <p>or click to browse</p>
+                            <p class="upload-note" id="advbg-info-box">First use downloads ~40MB AI model (cached after). 100% private.</p>
+                        </div>
+                    </div>
+
+                    <div class="advbg-preview-container hidden" id="advbg-preview-container">
+                        <div class="section-label">PREVIEW</div>
+                        <div class="advbg-preview-wrapper">
+                            <canvas id="advbg-preview-canvas"></canvas>
+                            <div class="advbg-loading hidden" id="advbg-loading">
+                                <div class="spinner"></div>
+                                <span id="advbg-loading-text">Processing...</span>
+                            </div>
+                        </div>
+                        <div class="advbg-progress hidden" id="advbg-progress">
+                            <div class="progress-bar">
+                                <div class="progress-fill" id="advbg-progress-fill"></div>
+                            </div>
+                            <span class="progress-text" id="advbg-progress-text">Loading model...</span>
+                        </div>
+                        <button class="clear-list-btn" id="advbg-clear-btn">Remove Image</button>
+                    </div>
+
+                    <div class="control-group">
+                        <label class="section-label">OUTPUT FORMAT</label>
+                        <select id="advbg-format-select" class="vintage-select">
+                            <option value="png" selected>PNG (Transparent)</option>
+                            <option value="webp">WebP (Transparent)</option>
+                        </select>
+                    </div>
+
+                    <div class="control-group">
+                        <label class="section-label">CUSTOM FILENAME</label>
+                        <div class="filename-input-wrapper">
+                            <input type="text" id="advbg-filename" class="vintage-input filename-input" placeholder="image_nobg">
+                            <span class="filename-ext" id="advbg-filename-ext">.png</span>
+                        </div>
+                    </div>
+
+                    <div class="action-footer">
+                        <button class="btn-primary" id="advbg-download-btn" disabled>
                             <span class="btn-text">DOWNLOAD</span>
                             <span class="btn-sub">Background Removed</span>
                         </button>

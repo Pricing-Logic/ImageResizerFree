@@ -111,7 +111,24 @@
         bgFormatSelect: document.getElementById('bg-format-select'),
         bgFilename: document.getElementById('bg-filename'),
         bgFilenameExt: document.getElementById('bg-filename-ext'),
-        bgDownloadBtn: document.getElementById('bg-download-btn')
+        bgDownloadBtn: document.getElementById('bg-download-btn'),
+
+        // Advanced Background Remover
+        advbgDropZone: document.getElementById('advbg-drop-zone'),
+        advbgFileInput: document.getElementById('advbg-file-input'),
+        advbgPreviewContainer: document.getElementById('advbg-preview-container'),
+        advbgPreviewCanvas: document.getElementById('advbg-preview-canvas'),
+        advbgLoading: document.getElementById('advbg-loading'),
+        advbgLoadingText: document.getElementById('advbg-loading-text'),
+        advbgProgress: document.getElementById('advbg-progress'),
+        advbgProgressFill: document.getElementById('advbg-progress-fill'),
+        advbgProgressText: document.getElementById('advbg-progress-text'),
+        advbgClearBtn: document.getElementById('advbg-clear-btn'),
+        advbgFormatSelect: document.getElementById('advbg-format-select'),
+        advbgFilename: document.getElementById('advbg-filename'),
+        advbgFilenameExt: document.getElementById('advbg-filename-ext'),
+        advbgDownloadBtn: document.getElementById('advbg-download-btn'),
+        advbgInfoBox: document.getElementById('advbg-info-box')
     };
 
     // ===========================================
@@ -270,8 +287,8 @@
             p.classList.toggle('active', p.id === `${tool}-panel`);
         });
 
-        // Tools with their own upload zones (HEIC, Bulk, Background)
-        const hasOwnUploadZone = (tool === 'convert' || tool === 'bulk' || tool === 'background');
+        // Tools with their own upload zones (HEIC, Bulk, Background, Advanced BG)
+        const hasOwnUploadZone = (tool === 'convert' || tool === 'bulk' || tool === 'background' || tool === 'advancedbg');
 
         if (hasOwnUploadZone) {
             // Hide shared upload zone and divider for multi-file tools
@@ -1639,12 +1656,15 @@
             const imageData = ctx.getImageData(0, 0, bgPreviewCanvas.width, bgPreviewCanvas.height);
             const pixels = imageData.data;
 
-            // Get mask data
+            // Get mask data with edge feathering for smoother results
             const maskCanvas = document.createElement('canvas');
             maskCanvas.width = bgImage.naturalWidth;
             maskCanvas.height = bgImage.naturalHeight;
             const maskCtx = maskCanvas.getContext('2d');
+            // Apply blur for feathered edges (smoother hair/fine details)
+            maskCtx.filter = 'blur(1.5px)';
             maskCtx.drawImage(results.segmentationMask, 0, 0, maskCanvas.width, maskCanvas.height);
+            maskCtx.filter = 'none';
             const maskData = maskCtx.getImageData(0, 0, maskCanvas.width, maskCanvas.height);
             const maskPixels = maskData.data;
 
@@ -1691,6 +1711,267 @@
     }
 
     // ===========================================
+    // ADVANCED BACKGROUND REMOVER TOOL (RMBG-1.4)
+    // ===========================================
+
+    let advbgImage = null;
+    let advbgResultBlob = null;
+    let transformersLoaded = false;
+    const ADVBG_TIMEOUT = 120000; // 2 minutes for model download + processing
+
+    function initAdvancedBgTool() {
+        const { advbgDropZone, advbgFileInput, advbgClearBtn, advbgFormatSelect,
+                advbgFilenameExt, advbgDownloadBtn } = elements;
+
+        advbgDropZone.addEventListener('click', () => advbgFileInput.click());
+        advbgDropZone.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            advbgDropZone.classList.add('drag-over');
+        });
+        advbgDropZone.addEventListener('dragleave', (e) => {
+            e.preventDefault();
+            advbgDropZone.classList.remove('drag-over');
+        });
+        advbgDropZone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            advbgDropZone.classList.remove('drag-over');
+            if (e.dataTransfer.files.length > 0) {
+                handleAdvbgFile(e.dataTransfer.files[0]);
+            }
+        });
+        advbgFileInput.addEventListener('change', (e) => {
+            if (e.target.files.length > 0) {
+                handleAdvbgFile(e.target.files[0]);
+            }
+        });
+
+        advbgClearBtn.addEventListener('click', clearAdvbgImage);
+        advbgFormatSelect.addEventListener('change', () => {
+            updateExtensionDisplay(advbgFormatSelect, advbgFilenameExt);
+        });
+        advbgDownloadBtn.addEventListener('click', () => safeExecute(downloadAdvbgResult, 'Advanced BG Download'));
+
+        updateExtensionDisplay(advbgFormatSelect, advbgFilenameExt);
+    }
+
+    function handleAdvbgFile(file) {
+        // Validate file type
+        if (!file.type.startsWith('image/')) {
+            alert('Please select a valid image file.');
+            return;
+        }
+
+        // Validate file size (max 50MB)
+        if (file.size > 50 * 1024 * 1024) {
+            alert('File too large. Maximum size is 50MB.');
+            return;
+        }
+
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            const img = new Image();
+            img.onload = function() {
+                advbgImage = img;
+
+                // Set default filename
+                const baseName = file.name.replace(/\.[^/.]+$/, '');
+                elements.advbgFilename.value = `${baseName}_nobg`;
+
+                // Show preview container, hide drop zone
+                elements.advbgDropZone.classList.add('hidden');
+                elements.advbgPreviewContainer.classList.remove('hidden');
+
+                // Process the image
+                processAdvancedBackgroundRemoval();
+            };
+            img.onerror = function() {
+                alert('Error loading image. The file may be corrupted.');
+            };
+            img.src = e.target.result;
+        };
+        reader.onerror = function() {
+            alert('Error reading file. Please try again.');
+        };
+        reader.readAsDataURL(file);
+    }
+
+    function clearAdvbgImage() {
+        advbgImage = null;
+        advbgResultBlob = null;
+        elements.advbgFileInput.value = '';
+        elements.advbgPreviewContainer.classList.add('hidden');
+        elements.advbgDropZone.classList.remove('hidden');
+        elements.advbgDownloadBtn.disabled = true;
+        elements.advbgProgress.classList.add('hidden');
+
+        // Clear canvas
+        const canvas = elements.advbgPreviewCanvas;
+        canvas.width = 0;
+        canvas.height = 0;
+    }
+
+    let rmbgModel = null;
+    let rmbgProcessor = null;
+    let RawImage = null;
+
+    async function loadTransformers() {
+        if (transformersLoaded) return;
+
+        // Show progress UI
+        elements.advbgProgress.classList.remove('hidden');
+        elements.advbgProgressText.textContent = 'Loading AI library...';
+        elements.advbgProgressFill.style.width = '10%';
+
+        try {
+            // Dynamically import Transformers.js v3
+            const transformers = await import('https://cdn.jsdelivr.net/npm/@huggingface/transformers@3.1.2');
+            const { AutoModel, AutoProcessor, env } = transformers;
+            RawImage = transformers.RawImage;
+
+            // Configure for browser use
+            env.allowLocalModels = false;
+
+            elements.advbgProgressText.textContent = 'Loading AI model (~40MB)...';
+            elements.advbgProgressFill.style.width = '20%';
+
+            // Load model and processor with progress tracking
+            const modelId = 'briaai/RMBG-1.4';
+
+            // Load processor first (smaller)
+            elements.advbgProgressText.textContent = 'Loading processor...';
+            rmbgProcessor = await AutoProcessor.from_pretrained(modelId, {
+                progress_callback: (progress) => {
+                    if (progress.status === 'progress' && progress.total) {
+                        const pct = Math.round((progress.loaded / progress.total) * 100);
+                        elements.advbgProgressFill.style.width = `${20 + pct * 0.1}%`;
+                    }
+                }
+            });
+
+            elements.advbgProgressText.textContent = 'Loading AI model...';
+            elements.advbgProgressFill.style.width = '30%';
+
+            // Load the model (larger download)
+            rmbgModel = await AutoModel.from_pretrained(modelId, {
+                progress_callback: (progress) => {
+                    if (progress.status === 'progress' && progress.total) {
+                        const pct = Math.round((progress.loaded / progress.total) * 100);
+                        elements.advbgProgressText.textContent = `Downloading model: ${pct}%`;
+                        elements.advbgProgressFill.style.width = `${30 + pct * 0.65}%`;
+                    }
+                }
+            });
+
+            transformersLoaded = true;
+            elements.advbgProgressFill.style.width = '100%';
+            elements.advbgProgressText.textContent = 'Model ready!';
+
+            // Hide info box after model loads
+            elements.advbgInfoBox.style.display = 'none';
+
+        } catch (err) {
+            console.error('Failed to load Transformers.js:', err);
+            throw new Error('Failed to load AI model: ' + err.message);
+        }
+    }
+
+    async function processAdvancedBackgroundRemoval() {
+        if (!advbgImage) return;
+
+        const { advbgPreviewCanvas, advbgLoading, advbgLoadingText, advbgDownloadBtn, advbgProgress } = elements;
+
+        // Show loading
+        advbgLoading.classList.remove('hidden');
+        advbgLoadingText.textContent = 'Initializing...';
+        advbgDownloadBtn.disabled = true;
+
+        try {
+            // Load Transformers.js and model if not already loaded
+            await loadTransformers();
+
+            advbgLoadingText.textContent = 'Processing image...';
+            advbgProgress.classList.add('hidden');
+
+            // Convert image to data URL for RawImage
+            const tempCanvas = document.createElement('canvas');
+            tempCanvas.width = advbgImage.naturalWidth;
+            tempCanvas.height = advbgImage.naturalHeight;
+            const tempCtx = tempCanvas.getContext('2d');
+            tempCtx.drawImage(advbgImage, 0, 0);
+            const imageDataUrl = tempCanvas.toDataURL('image/png');
+
+            // Load image using RawImage
+            const image = await RawImage.fromURL(imageDataUrl);
+
+            // Preprocess the image
+            const { pixel_values } = await rmbgProcessor(image);
+
+            // Run inference
+            const { output } = await rmbgModel({ input: pixel_values });
+
+            // Convert output mask to RawImage and resize to original dimensions
+            const maskData = output[0].mul(255).to('uint8').data;
+            const maskWidth = output.dims[3];
+            const maskHeight = output.dims[2];
+
+            // Create mask RawImage
+            const mask = new RawImage(maskData, maskWidth, maskHeight, 1);
+            const resizedMask = await mask.resize(advbgImage.naturalWidth, advbgImage.naturalHeight);
+
+            // Set up canvas
+            advbgPreviewCanvas.width = advbgImage.naturalWidth;
+            advbgPreviewCanvas.height = advbgImage.naturalHeight;
+            const ctx = advbgPreviewCanvas.getContext('2d');
+
+            // Draw original image
+            ctx.drawImage(advbgImage, 0, 0);
+
+            // Get image data and apply mask to alpha channel
+            const imageData = ctx.getImageData(0, 0, advbgPreviewCanvas.width, advbgPreviewCanvas.height);
+            const pixels = imageData.data;
+
+            // Apply mask to alpha channel
+            for (let i = 0; i < resizedMask.data.length; i++) {
+                pixels[i * 4 + 3] = resizedMask.data[i]; // Set alpha from mask
+            }
+
+            ctx.putImageData(imageData, 0, 0);
+
+            // Clean up temp canvas
+            tempCanvas.width = 0;
+            tempCanvas.height = 0;
+
+            // Generate result blob
+            const format = elements.advbgFormatSelect.value;
+            const mimeType = `image/${format}`;
+
+            advbgResultBlob = await new Promise(resolve => {
+                advbgPreviewCanvas.toBlob(resolve, mimeType);
+            });
+
+            advbgDownloadBtn.disabled = false;
+
+        } catch (err) {
+            console.error('Advanced background removal error:', err);
+            alert('Error processing image: ' + err.message);
+            clearAdvbgImage();
+        } finally {
+            advbgLoading.classList.add('hidden');
+        }
+    }
+
+    function downloadAdvbgResult() {
+        if (!advbgResultBlob) {
+            alert('No processed image available.');
+            return;
+        }
+
+        const format = elements.advbgFormatSelect.value;
+        const filename = getDownloadFilename(elements.advbgFilename, '_nobg', format);
+        downloadBlob(advbgResultBlob, filename);
+    }
+
+    // ===========================================
     // INITIALIZATION
     // ===========================================
 
@@ -1704,6 +1985,7 @@
         initHeicTool();
         initBulkTool();
         initBackgroundTool();
+        initAdvancedBgTool();
     }
 
     // Start the app
