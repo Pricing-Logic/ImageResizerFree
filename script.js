@@ -34,6 +34,76 @@
 
     const BLOG_POSTS = [
         {
+            id: 'clipboard-paste-copy',
+            title: 'Stop Saving Files You\'re Going to Delete Immediately',
+            date: '2026-03-10',
+            readTime: '1 min read',
+            excerpt: 'Paste a screenshot directly into any tool. Copy the result straight back to your clipboard. No temp files.',
+            body: [
+                "The workflow was: take a screenshot, save it somewhere, open the tab, click upload, find the file, process it, download the result, open it in whatever you actually needed. Every single time.",
+                "I built clipboard paste and copy into iResized because that entire chain is unnecessary. Your browser already has the image. There\u2019s no reason to touch the filesystem.",
+                "The paste button sits in the upload area on every tool. Hit it and your clipboard screenshot drops straight in. When the tool finishes, every output has a copy button that writes the result directly back to your clipboard.",
+                "It\u2019s built on navigator.clipboard.read() and navigator.clipboard.write() \u2014 zero dependencies, pure browser API. Works in any modern browser over HTTPS. Squoosh doesn\u2019t have this. Most online tools don\u2019t because they\u2019re designed around server-side processing and file uploads.",
+                "You get a screenshot-to-result pipeline that never touches your downloads folder."
+            ]
+        },
+        {
+            id: 'batch-processing-zip-download',
+            title: 'I Got Tired of Downloading Images One at a Time',
+            date: '2026-03-10',
+            readTime: '2 min read',
+            excerpt: 'Bulk image processing exists everywhere \u2014 but only if you pay or accept arbitrary limits.',
+            body: [
+                "Every batch image tool on the internet has a catch. BeFunky charges $6.99/month. TinyPNG lets you process 20 images free per month, then stops. iLoveIMG quietly caps how many you can do at once. The free tier is always the bait.",
+                "The actual broken thing isn\u2019t the processing \u2014 it\u2019s the download step. You resize 20 images and then click \u2018Download\u2019 twenty separate times. That\u2019s not a workflow, that\u2019s punishment.",
+                "I built batch processing into iResized. Upload 10 to 50 images, pick an operation \u2014 resize, compress, or convert \u2014 and it runs through all of them at once. A progress bar shows exactly which file is being processed so you\u2019re not staring at a spinner wondering if it crashed.",
+                "When it\u2019s done, JSZip bundles everything into a single ZIP file. One click, all your files. No account, no monthly limit, no watermark.",
+                "Client-side processing means nothing leaves your machine. The ZIP gets built in your browser. That\u2019s the whole feature \u2014 bulk processing that doesn\u2019t treat free users as a revenue problem to solve."
+            ]
+        },
+        {
+            id: 'auto-enhance-one-click-levels',
+            title: 'Auto-Enhance: One Click to Fix a Flat Photo',
+            date: '2026-03-10',
+            readTime: '2 min read',
+            excerpt: 'Fotor charges for it. Pixlr locks it behind Pro. I put it in for free because it\u2019s 40 lines of JavaScript.',
+            body: [
+                "The number one thing people want from an image tool is \u2018make it look better.\u2019 Most phone photos are slightly flat, slightly dark, or blown out. Not unusable \u2014 just dull.",
+                "Fotor charges for auto-enhance. Pixlr limits it to Pro users. Adobe Express gates its AI enhance behind a paid plan. The feature is not complicated enough to justify any of that.",
+                "I built it with pure Canvas 2D \u2014 getImageData, some histogram math, putImageData. About 40 lines of JavaScript. No library. It computes per-channel histograms, then stretches the 5th-to-95th percentile range to fill 0\u2013255. That\u2019s it. That\u2019s the whole algorithm.",
+                "There\u2019s a strength slider so you can blend between the original and the enhanced version at 0\u2013100%. Useful when the auto result is slightly too punchy.",
+                "After applying, it shows you the actual numbers: brightness delta, contrast delta, per-channel ranges before and after. You can see exactly what changed and by how much. One click, no subscription."
+            ]
+        },
+        {
+            id: 'resize-to-target-file-size',
+            title: 'Stop Guessing. Enter a Size, Get That Size.',
+            date: '2026-03-10',
+            readTime: '2 min read',
+            excerpt: 'Email attachment limits and CMS upload caps shouldn\u2019t require 20 minutes of manual compress-and-pray.',
+            body: [
+                "Every few days someone hits a 1MB email attachment limit, or a form that caps uploads at 500KB. Their solution: compress the image, check the file size, compress again, check again. Repeat until close enough or completely defeated.",
+                "No free tool solves this cleanly. ImageResizer.com will solve it for $10/month. Everyone else either ignores the problem or makes you do the math yourself.",
+                "I built a target file size input into iresized. You type in a number \u2014 KB or MB \u2014 and the tool finds the right JPEG quality automatically. No slider-dragging. No guessing.",
+                "Under the hood it\u2019s a binary search on the canvas.toBlob() quality parameter. Converges in about 8 iterations, takes roughly 200ms. Zero dependencies, pure JavaScript running entirely in your browser.",
+                "You get an image at or under your target size. That\u2019s it. No account, no paywall, no watermark on something you already owned."
+            ]
+        },
+        {
+            id: 'avif-webp-format-conversion',
+            title: 'AVIF and WebP Conversion Without the Paywall',
+            date: '2026-03-10',
+            readTime: '2 min read',
+            excerpt: 'AVIF files are 40% smaller than JPEG and somehow every converter wants a subscription to produce one.',
+            body: [
+                "AVIF and WebP have been the right answer for web images for years. AVIF cuts file sizes 30\u201350% versus JPEG at equivalent quality. The browser has supported it since Chrome 85, which covers 95%+ of your users. There\u2019s no good reason not to use it.",
+                "And yet here we are. iLoveIMG charges for AVIF conversion. Most server-side tools have daily limits. Squoosh is free but processes one image at a time, which is fine until you have forty product shots to convert.",
+                "The annoying part is that the encoder is already sitting in your browser. canvas.toBlob() handles AVIF, WebP, JPEG, and PNG natively. No server needed. No account. No metered API call going to someone\u2019s infrastructure.",
+                "So I wired it up properly. Drop your images, pick your output format, set the quality slider, download. Bulk conversion works the same way as single \u2014 you\u2019re just doing more of them.",
+                "You get client-side conversion to all four formats, a quality slider so you\u2019re not guessing, and no file leaving your machine. That\u2019s the whole thing."
+            ]
+        },
+        {
             id: 'watermark-removal-done-properly',
             title: 'Watermark Removal, Done Properly',
             date: '2026-03-10',
