@@ -344,7 +344,13 @@
      */
     function safeExecute(fn, toolName) {
         try {
-            fn();
+            const result = fn();
+            if (result && typeof result.catch === 'function') {
+                result.catch(function(err) {
+                    console.error(`${toolName} error:`, err);
+                    alert(`${toolName} encountered an error. Please try again.`);
+                });
+            }
         } catch (err) {
             console.error(`${toolName} error:`, err);
             alert(`${toolName} encountered an error. Please try again.`);
