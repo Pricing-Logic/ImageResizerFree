@@ -769,6 +769,56 @@ body {
     letter-spacing: 0.1em;
 }
 
+/* Paste Button (in upload zone) */
+.paste-btn {
+    margin-top: 1rem;
+    padding: 0.4rem 1.2rem;
+    font-family: var(--font-heading);
+    font-size: 0.85rem;
+    font-weight: 600;
+    background: transparent;
+    border: 1px solid var(--navy-blue);
+    color: var(--navy-blue);
+    cursor: pointer;
+    border-radius: 3px;
+    transition: all 0.2s;
+    letter-spacing: 0.03em;
+}
+
+.paste-btn:hover {
+    background: var(--navy-blue);
+    color: #fff;
+}
+
+/* Secondary Action Button (Copy to Clipboard) */
+.btn-secondary {
+    margin-top: 0.75rem;
+    padding: 0.5rem 1.5rem;
+    font-family: var(--font-heading);
+    font-size: 0.85rem;
+    font-weight: 600;
+    background: transparent;
+    border: 1px solid var(--charcoal);
+    color: var(--charcoal);
+    cursor: pointer;
+    border-radius: 4px;
+    transition: all 0.2s;
+    letter-spacing: 0.03em;
+    display: block;
+    margin-left: auto;
+    margin-right: auto;
+}
+
+.btn-secondary:hover {
+    background: var(--charcoal);
+    color: #fff;
+}
+
+.btn-secondary.copied {
+    border-color: var(--faded-sage);
+    color: var(--faded-sage);
+}
+
 /* Footer */
 .site-footer {
     text-align: center;

@@ -188,7 +188,15 @@
         watermarkFormatSelect: document.getElementById('watermark-format-select'),
         watermarkFilename: document.getElementById('watermark-filename'),
         watermarkFilenameExt: document.getElementById('watermark-filename-ext'),
-        watermarkBtn: document.getElementById('watermark-btn')
+        watermarkBtn: document.getElementById('watermark-btn'),
+        watermarkCopyBtn: document.getElementById('watermark-copy-btn'),
+
+        // Clipboard
+        pasteBtn: document.getElementById('paste-btn'),
+        resizeCopyBtn: document.getElementById('resize-copy-btn'),
+        compressCopyBtn: document.getElementById('compress-copy-btn'),
+        cropCopyBtn: document.getElementById('crop-copy-btn'),
+        metadataCopyBtn: document.getElementById('metadata-copy-btn')
     };
 
     // ===========================================
@@ -2287,6 +2295,219 @@
     }
 
     // ===========================================
+    // CLIPBOARD FEATURES
+    // ===========================================
+
+    /**
+     * Read an image blob from the clipboard items array.
+     * Returns null if no image is found.
+     */
+    async function getImageBlobFromClipboard(clipboardItems) {
+        for (const item of clipboardItems) {
+            for (const type of item.types) {
+                if (type.startsWith('image/')) {
+                    return await item.getType(type);
+                }
+            }
+        }
+        return null;
+    }
+
+    /**
+     * Load a File/Blob as an image and pass it to handleFile.
+     * Creates a synthetic File object so handleFile can read the name/type.
+     */
+    function handleClipboardBlob(blob) {
+        if (!blob || !blob.type.startsWith('image/')) {
+            alert('No image found on clipboard.');
+            return;
+        }
+
+        const ext = blob.type.split('/')[1] || 'png';
+        const syntheticFile = new File([blob], `pasted_image.${ext}`, { type: blob.type });
+        handleFile(syntheticFile);
+    }
+
+    /**
+     * Paste button click handler — reads image from clipboard API.
+     */
+    async function handlePasteBtnClick() {
+        if (!navigator.clipboard || !navigator.clipboard.read) {
+            alert('Clipboard API is not available. Try pressing Ctrl+V / Cmd+V while the page is focused.');
+            return;
+        }
+
+        try {
+            const items = await navigator.clipboard.read();
+            const blob = await getImageBlobFromClipboard(items);
+            if (!blob) {
+                alert('No image found on clipboard. Copy an image first, then paste.');
+                return;
+            }
+            handleClipboardBlob(blob);
+        } catch (err) {
+            if (err.name === 'NotAllowedError') {
+                alert('Clipboard permission denied. Press Ctrl+V / Cmd+V instead.');
+            } else {
+                console.error('Clipboard read error:', err);
+                alert('Could not read clipboard. Try pressing Ctrl+V / Cmd+V.');
+            }
+        }
+    }
+
+    /**
+     * Document-level paste event handler (Ctrl+V / Cmd+V).
+     * Only processes if the pasted item is an image.
+     */
+    function handleDocumentPaste(e) {
+        const items = e.clipboardData && e.clipboardData.items;
+        if (!items) return;
+
+        for (let i = 0; i < items.length; i++) {
+            if (items[i].type.startsWith('image/')) {
+                const blob = items[i].getAsFile();
+                if (blob) {
+                    handleClipboardBlob(blob);
+                    e.preventDefault();
+                    return;
+                }
+            }
+        }
+    }
+
+    /**
+     * Write a canvas result blob to the clipboard.
+     * Uses canvas.toBlob to produce PNG (the only format clipboard supports).
+     * Shows "Copied!" feedback on the button briefly.
+     */
+    function copyCanvasToClipboard(canvas, copyBtn) {
+        if (!navigator.clipboard || !navigator.clipboard.write) {
+            alert('Clipboard write is not supported in this browser.');
+            return;
+        }
+
+        canvas.toBlob(async function(blob) {
+            if (!blob) {
+                alert('Error generating image for clipboard.');
+                return;
+            }
+            try {
+                await navigator.clipboard.write([
+                    new ClipboardItem({ 'image/png': blob })
+                ]);
+                copyBtn.textContent = 'Copied!';
+                copyBtn.classList.add('copied');
+                setTimeout(() => {
+                    copyBtn.textContent = 'Copy to Clipboard';
+                    copyBtn.classList.remove('copied');
+                }, 2000);
+            } catch (err) {
+                console.error('Clipboard write error:', err);
+                alert('Could not copy to clipboard. Your browser may not support this feature.');
+            }
+        }, 'image/png');
+    }
+
+    /**
+     * Generic "process then copy" helper.
+     * Renders the current image with the given draw function onto a canvas,
+     * then copies the canvas to the clipboard.
+     */
+    function processAndCopyToClipboard(drawFn, copyBtn) {
+        if (!originalImage) {
+            alert('Please upload an image first.');
+            return;
+        }
+
+        const canvas = document.createElement('canvas');
+        canvas.width = originalWidth;
+        canvas.height = originalHeight;
+        const ctx = canvas.getContext('2d');
+        drawFn(canvas, ctx);
+
+        copyCanvasToClipboard(canvas, copyBtn);
+        // canvas will be GC'd — no need to cleanupCanvas since we don't add it to DOM
+    }
+
+    function initClipboard() {
+        // Paste button in upload zone
+        elements.pasteBtn.addEventListener('click', (e) => {
+            e.stopPropagation(); // prevent upload zone click from firing
+            handlePasteBtnClick();
+        });
+
+        // Global Ctrl+V / Cmd+V paste
+        document.addEventListener('paste', handleDocumentPaste);
+
+        // Resize copy
+        elements.resizeCopyBtn.addEventListener('click', () => {
+            processAndCopyToClipboard((canvas, ctx) => {
+                const targetWidth = parseInt(elements.widthInput.value, 10) || originalWidth;
+                const targetHeight = parseInt(elements.heightInput.value, 10) || originalHeight;
+                canvas.width = targetWidth;
+                canvas.height = targetHeight;
+                ctx.imageSmoothingEnabled = true;
+                ctx.imageSmoothingQuality = 'high';
+                ctx.drawImage(originalImage, 0, 0, targetWidth, targetHeight);
+            }, elements.resizeCopyBtn);
+        });
+
+        // Compress copy (re-encode at same dimensions, quality applied via PNG for clipboard)
+        elements.compressCopyBtn.addEventListener('click', () => {
+            processAndCopyToClipboard((canvas, ctx) => {
+                ctx.drawImage(originalImage, 0, 0);
+            }, elements.compressCopyBtn);
+        });
+
+        // Crop copy
+        elements.cropCopyBtn.addEventListener('click', () => {
+            if (!originalImage) {
+                alert('Please upload an image first.');
+                return;
+            }
+            const x = Math.max(0, Math.round(cropSelection.x));
+            const y = Math.max(0, Math.round(cropSelection.y));
+            const width = Math.max(1, Math.min(Math.round(cropSelection.width), originalWidth - x));
+            const height = Math.max(1, Math.min(Math.round(cropSelection.height), originalHeight - y));
+
+            if (width < 1 || height < 1) {
+                alert('Please select a valid crop area first.');
+                return;
+            }
+
+            const canvas = document.createElement('canvas');
+            canvas.width = width;
+            canvas.height = height;
+            const ctx = canvas.getContext('2d');
+            ctx.drawImage(originalImage, x, y, width, height, 0, 0, width, height);
+            copyCanvasToClipboard(canvas, elements.cropCopyBtn);
+        });
+
+        // Strip EXIF copy (canvas re-encode naturally strips metadata)
+        elements.metadataCopyBtn.addEventListener('click', () => {
+            processAndCopyToClipboard((canvas, ctx) => {
+                ctx.drawImage(originalImage, 0, 0);
+            }, elements.metadataCopyBtn);
+        });
+
+        // Watermark removal copy
+        elements.watermarkCopyBtn.addEventListener('click', () => {
+            if (!originalImage) {
+                alert('Please upload an image first.');
+                return;
+            }
+            const patchSize = parseInt(elements.watermarkPatchSlider.value, 10) || computePatchSize(originalWidth, originalHeight);
+            const canvas = document.createElement('canvas');
+            canvas.width = originalWidth;
+            canvas.height = originalHeight;
+            const ctx = canvas.getContext('2d');
+            ctx.drawImage(originalImage, 0, 0);
+            inpaintBottomRightCorner(ctx, originalWidth, originalHeight, patchSize);
+            copyCanvasToClipboard(canvas, elements.watermarkCopyBtn);
+        });
+    }
+
+    // ===========================================
     // BLOG PANEL
     // ===========================================
 
@@ -2360,6 +2581,7 @@
         initBackgroundTool();
         initAdvancedBgTool();
         initWatermarkTool();
+        initClipboard();
         renderBlogPanel();
     }
 
