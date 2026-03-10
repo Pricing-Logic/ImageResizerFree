@@ -656,6 +656,11 @@
         elements.enhanceDownloadBtn.disabled = true;
         elements.enhanceStrengthSlider.value = 100;
         elements.enhanceStrengthVal.textContent = '100%';
+
+        // Reset target-size state
+        tsResultBlob = null;
+        elements.tsResult.classList.add('hidden');
+        elements.tsDownloadBtn.disabled = true;
     }
 
     // ===========================================
@@ -2833,24 +2838,25 @@
         const MAX_ITERATIONS = 8;
         let lo = 0.01;
         let hi = 1.0;
-        let lastBlob = null;
-        let lastQuality = hi;
+        let bestBlob = null;
+        let bestQuality = hi;
 
         for (let i = 0; i < MAX_ITERATIONS; i++) {
             const mid = (lo + hi) / 2;
-            lastQuality = mid;
 
             // Update progress
             elements.tsProgressText.textContent = `Searching... attempt ${i + 1}/${MAX_ITERATIONS}`;
             elements.tsProgressFill.style.width = `${((i + 1) / MAX_ITERATIONS) * 100}%`;
 
             const blob = await new Promise(resolve => canvas.toBlob(resolve, mimeType, mid));
-            lastBlob = blob;
 
-            if (blob.size > targetBytes) {
-                hi = mid;
-            } else {
+            if (blob.size <= targetBytes) {
+                // Valid candidate — under target. Track best (highest quality under target).
+                bestBlob = blob;
+                bestQuality = mid;
                 lo = mid;
+            } else {
+                hi = mid;
             }
         }
 
@@ -2858,15 +2864,25 @@
         elements.tsSearchBtn.disabled = false;
         elements.tsProgress.classList.add('hidden');
 
-        if (lastBlob) {
-            tsResultBlob = lastBlob;
-            const resultKb = (lastBlob.size / 1024).toFixed(0);
-            const resultQuality = Math.round(lastQuality * 100);
+        if (bestBlob) {
+            tsResultBlob = bestBlob;
+            const resultKb = (bestBlob.size / 1024).toFixed(0);
+            const resultQuality = Math.round(bestQuality * 100);
             elements.tsResultText.textContent = `Found: ${resultKb} KB at ${resultQuality}% quality`;
             elements.tsResult.classList.remove('hidden');
             elements.tsDownloadBtn.disabled = false;
         } else {
-            alert('Search failed. Please try again.');
+            // Even lowest quality exceeded target — offer the smallest we found
+            const minBlob = await new Promise(resolve => canvas.toBlob(resolve, mimeType, 0.01));
+            if (minBlob) {
+                tsResultBlob = minBlob;
+                const minKb = (minBlob.size / 1024).toFixed(0);
+                elements.tsResultText.textContent = `Minimum achievable: ${minKb} KB (target too small for this format)`;
+                elements.tsResult.classList.remove('hidden');
+                elements.tsDownloadBtn.disabled = false;
+            } else {
+                alert('Search failed. Please try again.');
+            }
         }
     }
 
@@ -3108,7 +3124,7 @@
 
         const origContrast = channelStdDev(enhanceOriginalData, total, origBrightness);
         const newContrast = channelStdDev(enhanceEnhancedData, total, newBrightness);
-        const contrastDelta = Math.round((newContrast - origContrast) / origContrast * 100);
+        const contrastDelta = origContrast > 0 ? Math.round((newContrast - origContrast) / origContrast * 100) : 0;
 
         const sign = (n) => n >= 0 ? '+' : '';
         elements.enhanceStats.innerHTML =
@@ -3564,21 +3580,29 @@
             return;
         }
 
+        // Snapshot files and settings at start to prevent mid-run mutation
+        const filesToProcess = [...batchFiles];
         const op = document.getElementById('batch-operation').value;
         const progressEl = document.getElementById('batch-progress');
         const progressFill = document.getElementById('batch-progress-fill');
         const progressText = document.getElementById('batch-progress-text');
         const processBtn = document.getElementById('batch-process-btn');
+        const clearBtn = document.getElementById('batch-clear-btn');
 
         processBtn.disabled = true;
+        if (clearBtn) clearBtn.disabled = true;
         processBtn.querySelector('.btn-text').textContent = 'PROCESSING...';
         progressEl.classList.remove('hidden');
+
+        // Disable remove buttons during processing
+        document.querySelectorAll('#batch-file-list .remove-file-btn').forEach(btn => btn.disabled = true);
+
         batchResultBlobs = [];
 
-        const total = batchFiles.length;
+        const total = filesToProcess.length;
 
         for (let i = 0; i < total; i++) {
-            const file = batchFiles[i];
+            const file = filesToProcess[i];
             progressText.textContent = `Processing ${i + 1} of ${total}... (${file.name})`;
             progressFill.style.width = `${Math.round((i / total) * 100)}%`;
 
@@ -3598,7 +3622,11 @@
 
         renderBatchResults();
         processBtn.disabled = false;
+        if (clearBtn) clearBtn.disabled = false;
         processBtn.querySelector('.btn-text').textContent = 'PROCESS ALL';
+
+        // Re-enable remove buttons
+        document.querySelectorAll('#batch-file-list .remove-file-btn').forEach(btn => btn.disabled = false);
     }
 
     function processBatchFile(file, op) {
