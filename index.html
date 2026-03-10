@@ -37,6 +37,7 @@
                 <button class="tab-btn" data-tool="metadata" role="tab" aria-selected="false">Strip EXIF</button>
                 <button class="tab-btn" data-tool="background" role="tab" aria-selected="false">Remove BG</button>
                 <button class="tab-btn" data-tool="advancedbg" role="tab" aria-selected="false">Advanced BG</button>
+                <button class="tab-btn" data-tool="watermark" role="tab" aria-selected="false">Watermark</button>
             </nav>
 
             <!-- Shared Upload Zone -->
@@ -478,6 +479,63 @@
                         <button class="btn-primary" id="advbg-download-btn" disabled>
                             <span class="btn-text">DOWNLOAD</span>
                             <span class="btn-sub">Background Removed</span>
+                        </button>
+                    </div>
+                </section>
+
+                <!-- WATERMARK REMOVER PANEL -->
+                <section class="tool-panel" id="watermark-panel" role="tabpanel">
+                    <p class="tool-description">Remove the Gemini AI watermark (4-pointed star in the bottom-right corner) using mirror-clone inpainting. 100% client-side, zero dependencies.</p>
+
+                    <div class="control-group">
+                        <div class="label-row">
+                            <label class="section-label">PATCH SIZE (PX)</label>
+                            <span class="value-badge" id="watermark-patch-val">60px</span>
+                        </div>
+                        <div class="slider-container">
+                            <input type="range" min="20" max="200" value="60" class="vintage-slider" id="watermark-patch-slider">
+                            <div class="ruler-marks">
+                                <span>20</span><span>110</span><span>200</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="control-row">
+                        <div class="control-group flex-grow">
+                            <div class="label-row">
+                                <label class="section-label">QUALITY</label>
+                                <span class="value-badge" id="watermark-quality-val">92%</span>
+                            </div>
+                            <div class="slider-container">
+                                <input type="range" min="1" max="100" value="92" class="vintage-slider" id="watermark-quality-slider">
+                                <div class="ruler-marks">
+                                    <span>0</span><span>50</span><span>100</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="control-group">
+                            <label class="section-label">FORMAT</label>
+                            <select class="vintage-select" id="watermark-format-select">
+                                <option value="jpeg">JPEG</option>
+                                <option value="png">PNG</option>
+                                <option value="webp">WebP</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="control-group filename-group">
+                        <label class="section-label">FILENAME</label>
+                        <div class="filename-input-wrapper">
+                            <input type="text" id="watermark-filename" class="vintage-input filename-input" placeholder="my-image">
+                            <span class="filename-ext" id="watermark-filename-ext">.jpeg</span>
+                        </div>
+                    </div>
+
+                    <div class="action-footer">
+                        <button class="btn-primary" id="watermark-btn">
+                            <span class="btn-text">REMOVE & DOWNLOAD</span>
+                            <span class="btn-sub">Watermark Erased</span>
                         </button>
                     </div>
                 </section>

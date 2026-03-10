@@ -128,7 +128,17 @@
         advbgFilename: document.getElementById('advbg-filename'),
         advbgFilenameExt: document.getElementById('advbg-filename-ext'),
         advbgDownloadBtn: document.getElementById('advbg-download-btn'),
-        advbgInfoBox: document.getElementById('advbg-info-box')
+        advbgInfoBox: document.getElementById('advbg-info-box'),
+
+        // Watermark Remover
+        watermarkPatchSlider: document.getElementById('watermark-patch-slider'),
+        watermarkPatchVal: document.getElementById('watermark-patch-val'),
+        watermarkQualitySlider: document.getElementById('watermark-quality-slider'),
+        watermarkQualityVal: document.getElementById('watermark-quality-val'),
+        watermarkFormatSelect: document.getElementById('watermark-format-select'),
+        watermarkFilename: document.getElementById('watermark-filename'),
+        watermarkFilenameExt: document.getElementById('watermark-filename-ext'),
+        watermarkBtn: document.getElementById('watermark-btn')
     };
 
     // ===========================================
@@ -240,6 +250,7 @@
         elements.compressFilename.value = `${baseName}_compressed`;
         elements.cropFilename.value = `${baseName}_cropped`;
         elements.metadataFilename.value = `${baseName}_clean`;
+        elements.watermarkFilename.value = `${baseName}_nowm`;
     }
 
     /**
@@ -1972,6 +1983,131 @@
     }
 
     // ===========================================
+    // WATERMARK REMOVER TOOL
+    // ===========================================
+
+    function initWatermarkTool() {
+        const { watermarkPatchSlider, watermarkPatchVal, watermarkQualitySlider,
+                watermarkQualityVal, watermarkFormatSelect, watermarkFilenameExt,
+                watermarkBtn } = elements;
+
+        watermarkPatchSlider.addEventListener('input', () => {
+            watermarkPatchVal.textContent = watermarkPatchSlider.value + 'px';
+        });
+        watermarkQualitySlider.addEventListener('input', () => {
+            watermarkQualityVal.textContent = watermarkQualitySlider.value + '%';
+        });
+        watermarkFormatSelect.addEventListener('change', () => {
+            updateQualityVisibility(watermarkFormatSelect, watermarkQualitySlider);
+            updateExtensionDisplay(watermarkFormatSelect, watermarkFilenameExt);
+        });
+        watermarkBtn.addEventListener('click', () => safeExecute(processWatermarkRemoval, 'Watermark Remover'));
+
+        updateQualityVisibility(watermarkFormatSelect, watermarkQualitySlider);
+        updateExtensionDisplay(watermarkFormatSelect, watermarkFilenameExt);
+    }
+
+    /**
+     * Smoothstep interpolation (cubic Hermite)
+     */
+    function smoothstep(t) {
+        t = Math.max(0, Math.min(1, t));
+        return t * t * (3 - 2 * t);
+    }
+
+    /**
+     * Mirror-clone inpaint the bottom-right corner of the canvas.
+     * Copies pixels from the adjacent region (above+left of patch) and
+     * feathers the seam edges using smoothstep blending.
+     */
+    function inpaintBottomRightCorner(ctx, imgW, imgH, patchSize) {
+        // Clamp patch to image dimensions
+        patchSize = Math.min(patchSize, imgW, imgH);
+
+        var featherWidth = Math.round(patchSize * 0.3);
+
+        // Patch region: bottom-right corner
+        var patchX = imgW - patchSize;
+        var patchY = imgH - patchSize;
+
+        // Source region: shifted up and left by patchSize, clamped to 0
+        var srcX = Math.max(0, patchX - patchSize);
+        var srcY = Math.max(0, patchY - patchSize);
+
+        // Read source pixels
+        var srcData = ctx.getImageData(srcX, srcY, patchSize, patchSize);
+        var srcPixels = srcData.data;
+
+        // Read existing patch pixels (the area we want to overwrite)
+        var patchData = ctx.getImageData(patchX, patchY, patchSize, patchSize);
+        var patchPixels = patchData.data;
+
+        // Blend: for each pixel in the patch, compute blend factor
+        for (var y = 0; y < patchSize; y++) {
+            for (var x = 0; x < patchSize; x++) {
+                // Distance from the top and left edges of the patch (seam edges)
+                var distFromTop = y;
+                var distFromLeft = x;
+                var distFromEdge = Math.min(distFromTop, distFromLeft);
+
+                // blend: 0 at seam edge (keep original), 1 deep inside (use clone)
+                var blend = featherWidth > 0 ? smoothstep(distFromEdge / featherWidth) : 1;
+
+                var idx = (y * patchSize + x) * 4;
+
+                patchPixels[idx]     = patchPixels[idx]     * (1 - blend) + srcPixels[idx]     * blend; // R
+                patchPixels[idx + 1] = patchPixels[idx + 1] * (1 - blend) + srcPixels[idx + 1] * blend; // G
+                patchPixels[idx + 2] = patchPixels[idx + 2] * (1 - blend) + srcPixels[idx + 2] * blend; // B
+                patchPixels[idx + 3] = patchPixels[idx + 3] * (1 - blend) + srcPixels[idx + 3] * blend; // A
+            }
+        }
+
+        // Write the blended pixels back
+        ctx.putImageData(patchData, patchX, patchY);
+    }
+
+    function processWatermarkRemoval() {
+        if (!originalImage) {
+            alert('Please upload an image first.');
+            return;
+        }
+
+        var patchSize = parseInt(elements.watermarkPatchSlider.value, 10) || 60;
+
+        // Warn if patch is too large relative to image
+        var minDim = Math.min(originalWidth, originalHeight);
+        if (patchSize > minDim * 0.4) {
+            if (!confirm('Patch size is large relative to this image and may affect visible content. Continue?')) {
+                return;
+            }
+        }
+
+        // Clamp
+        patchSize = Math.min(patchSize, originalWidth, originalHeight);
+
+        var format = elements.watermarkFormatSelect.value;
+        var quality = parseInt(elements.watermarkQualitySlider.value, 10) / 100;
+
+        var canvas = document.createElement('canvas');
+        canvas.width = originalWidth;
+        canvas.height = originalHeight;
+
+        var ctx = canvas.getContext('2d');
+        ctx.drawImage(originalImage, 0, 0);
+
+        // Run inpaint
+        inpaintBottomRightCorner(ctx, originalWidth, originalHeight, patchSize);
+
+        var mimeType = 'image/' + (format === 'jpg' ? 'jpeg' : format);
+        var filename = getDownloadFilename(elements.watermarkFilename, '_nowm', format);
+
+        canvas.toBlob(function(blob) {
+            downloadBlob(blob, filename);
+            cleanupCanvas(canvas);
+        }, mimeType, format === 'png' ? undefined : quality);
+    }
+
+    // ===========================================
     // INITIALIZATION
     // ===========================================
 
@@ -1986,6 +2122,7 @@
         initBulkTool();
         initBackgroundTool();
         initAdvancedBgTool();
+        initWatermarkTool();
     }
 
     // Start the app
