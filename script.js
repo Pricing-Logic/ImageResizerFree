@@ -130,7 +130,7 @@
         advbgDownloadBtn: document.getElementById('advbg-download-btn'),
         advbgInfoBox: document.getElementById('advbg-info-box'),
 
-        // Watermark Remover
+        // Watermark Removal
         watermarkPatchSlider: document.getElementById('watermark-patch-slider'),
         watermarkPatchVal: document.getElementById('watermark-patch-val'),
         watermarkQualitySlider: document.getElementById('watermark-quality-slider'),
@@ -1990,7 +1990,7 @@
     }
 
     // ===========================================
-    // WATERMARK REMOVER TOOL
+    // WATERMARK REMOVAL TOOL
     // ===========================================
 
     function initWatermarkTool() {
@@ -2008,7 +2008,7 @@
             updateQualityVisibility(watermarkFormatSelect, watermarkQualitySlider);
             updateExtensionDisplay(watermarkFormatSelect, watermarkFilenameExt);
         });
-        watermarkBtn.addEventListener('click', () => safeExecute(processWatermarkRemoval, 'Watermark Remover'));
+        watermarkBtn.addEventListener('click', () => safeExecute(processWatermarkRemoval, 'Watermark Removal'));
 
         updateQualityVisibility(watermarkFormatSelect, watermarkQualitySlider);
         updateExtensionDisplay(watermarkFormatSelect, watermarkFilenameExt);
