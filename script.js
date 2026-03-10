@@ -438,6 +438,13 @@
         widthInput.value = originalWidth;
         heightInput.value = originalHeight;
 
+        // Auto-size watermark patch slider based on image dimensions
+        if (originalWidth > 0 && originalHeight > 0) {
+            var recommended = computePatchSize(originalWidth, originalHeight);
+            elements.watermarkPatchSlider.value = recommended;
+            elements.watermarkPatchVal.textContent = recommended + 'px';
+        }
+
         // Set default filenames for all tools
         updateFilenameDefaults();
 
@@ -2008,61 +2015,183 @@
     }
 
     /**
-     * Smoothstep interpolation (cubic Hermite)
+     * Box-Muller transform: returns a Gaussian random number (mean=0, stddev=1)
      */
-    function smoothstep(t) {
-        t = Math.max(0, Math.min(1, t));
-        return t * t * (3 - 2 * t);
+    function gaussianNoise() {
+        var u1 = Math.random();
+        var u2 = Math.random();
+        // Avoid log(0)
+        if (u1 < 1e-10) u1 = 1e-10;
+        return Math.sqrt(-2 * Math.log(u1)) * Math.cos(2 * Math.PI * u2);
     }
 
     /**
-     * Mirror-clone inpaint the bottom-right corner of the canvas.
-     * Copies pixels from the adjacent region (above+left of patch) and
-     * feathers the seam edges using smoothstep blending.
+     * Compute per-channel stddev of pixel data against a profile.
+     * stripData: Uint8ClampedArray from getImageData (RGBA)
+     * profile: array of [r,g,b] averaged values indexed by profileAxis
+     * width, height: dimensions of the strip
+     * profileAxis: 'x' to index profile by column, 'y' to index by row
+     * Returns average stddev across R, G, B channels.
+     */
+    function computeStripVariance(stripData, profile, width, height, profileAxis) {
+        var sumSqR = 0, sumSqG = 0, sumSqB = 0;
+        var count = 0;
+        for (var y = 0; y < height; y++) {
+            for (var x = 0; x < width; x++) {
+                var idx = (y * width + x) * 4;
+                var pi = profile[profileAxis === 'x' ? x : y];
+                if (!pi) continue;
+                var dr = stripData[idx] - pi[0];
+                var dg = stripData[idx + 1] - pi[1];
+                var db = stripData[idx + 2] - pi[2];
+                sumSqR += dr * dr;
+                sumSqG += dg * dg;
+                sumSqB += db * db;
+                count++;
+            }
+        }
+        if (count === 0) return 0;
+        var varR = sumSqR / count;
+        var varG = sumSqG / count;
+        var varB = sumSqB / count;
+        return Math.sqrt((varR + varG + varB) / 3);
+    }
+
+    /**
+     * Compute recommended patch size based on image dimensions.
+     * Returns 96 for images ≤1024px, 144 for larger, clamped to 25% of min dimension.
+     */
+    function computePatchSize(imgW, imgH) {
+        var minDim = Math.min(imgW, imgH);
+        var base = minDim <= 1024 ? 96 : 144;
+        return Math.min(base, Math.floor(minDim * 0.25));
+    }
+
+    /**
+     * Edge-propagation inpaint the bottom-right corner of the canvas.
+     * Samples clean border pixels above and left of the patch, then
+     * fills via inverse-distance interpolation + calibrated noise.
      */
     function inpaintBottomRightCorner(ctx, imgW, imgH, patchSize) {
-        // Clamp patch to image dimensions
         patchSize = Math.min(patchSize, imgW, imgH);
 
-        var featherWidth = Math.round(patchSize * 0.3);
+        var STRIP_DEPTH = 6; // px deep for border sampling
+        var EPS = 0.001;
 
         // Patch region: bottom-right corner
         var patchX = imgW - patchSize;
         var patchY = imgH - patchSize;
 
-        // Source region: shifted up and left by patchSize, clamped to 0
-        var srcX = Math.max(0, patchX - patchSize);
-        var srcY = Math.max(0, patchY - patchSize);
+        // Ensure we have room for border strips
+        var topStripY = Math.max(0, patchY - STRIP_DEPTH);
+        var topStripH = patchY - topStripY;
+        var leftStripX = Math.max(0, patchX - STRIP_DEPTH);
+        var leftStripW = patchX - leftStripX;
 
-        // Read source pixels
-        var srcData = ctx.getImageData(srcX, srcY, patchSize, patchSize);
-        var srcPixels = srcData.data;
-
-        // Read existing patch pixels (the area we want to overwrite)
-        var patchData = ctx.getImageData(patchX, patchY, patchSize, patchSize);
-        var patchPixels = patchData.data;
-
-        // Blend: for each pixel in the patch, compute blend factor
-        for (var y = 0; y < patchSize; y++) {
+        // --- Sample top border strip (immediately above patch) ---
+        var topProfile = []; // topProfile[x] = [r, g, b]
+        var topStripData = null;
+        if (topStripH > 0) {
+            topStripData = ctx.getImageData(patchX, topStripY, patchSize, topStripH).data;
             for (var x = 0; x < patchSize; x++) {
-                // Distance from the top and left edges of the patch (seam edges)
-                var distFromTop = y;
-                var distFromLeft = x;
-                var distFromEdge = Math.min(distFromTop, distFromLeft);
-
-                // blend: 0 at seam edge (keep original), 1 deep inside (use clone)
-                var blend = featherWidth > 0 ? smoothstep(distFromEdge / featherWidth) : 1;
-
-                var idx = (y * patchSize + x) * 4;
-
-                patchPixels[idx]     = patchPixels[idx]     * (1 - blend) + srcPixels[idx]     * blend; // R
-                patchPixels[idx + 1] = patchPixels[idx + 1] * (1 - blend) + srcPixels[idx + 1] * blend; // G
-                patchPixels[idx + 2] = patchPixels[idx + 2] * (1 - blend) + srcPixels[idx + 2] * blend; // B
-                patchPixels[idx + 3] = patchPixels[idx + 3] * (1 - blend) + srcPixels[idx + 3] * blend; // A
+                var sr = 0, sg = 0, sb = 0;
+                for (var sy = 0; sy < topStripH; sy++) {
+                    var si = (sy * patchSize + x) * 4;
+                    sr += topStripData[si];
+                    sg += topStripData[si + 1];
+                    sb += topStripData[si + 2];
+                }
+                topProfile[x] = [sr / topStripH, sg / topStripH, sb / topStripH];
+            }
+        } else {
+            // Fallback: no room for top strip, use first row of patch
+            var fallbackData = ctx.getImageData(patchX, patchY, patchSize, 1).data;
+            for (var x = 0; x < patchSize; x++) {
+                var si = x * 4;
+                topProfile[x] = [fallbackData[si], fallbackData[si + 1], fallbackData[si + 2]];
             }
         }
 
-        // Write the blended pixels back
+        // --- Sample left border strip (immediately left of patch) ---
+        var leftProfile = []; // leftProfile[y] = [r, g, b]
+        var leftStripData = null;
+        if (leftStripW > 0) {
+            leftStripData = ctx.getImageData(leftStripX, patchY, leftStripW, patchSize).data;
+            for (var y = 0; y < patchSize; y++) {
+                var sr = 0, sg = 0, sb = 0;
+                for (var sx = 0; sx < leftStripW; sx++) {
+                    var si = (y * leftStripW + sx) * 4;
+                    sr += leftStripData[si];
+                    sg += leftStripData[si + 1];
+                    sb += leftStripData[si + 2];
+                }
+                leftProfile[y] = [sr / leftStripW, sg / leftStripW, sb / leftStripW];
+            }
+        } else {
+            // Fallback: no room for left strip, use first column of patch
+            var fallbackData = ctx.getImageData(patchX, patchY, 1, patchSize).data;
+            for (var y = 0; y < patchSize; y++) {
+                var si = y * 4;
+                leftProfile[y] = [fallbackData[si], fallbackData[si + 1], fallbackData[si + 2]];
+            }
+        }
+
+        // --- Corner color: average of top-left area of the border samples ---
+        var cornerR = (topProfile[0][0] + leftProfile[0][0]) / 2;
+        var cornerG = (topProfile[0][1] + leftProfile[0][1]) / 2;
+        var cornerB = (topProfile[0][2] + leftProfile[0][2]) / 2;
+
+        // --- Measure noise from border strips ---
+        var noiseStdDev = 0;
+        if (topStripData && topStripH > 0) {
+            noiseStdDev = computeStripVariance(topStripData, topProfile, patchSize, topStripH, 'x');
+        }
+        if (leftStripData && leftStripW > 0) {
+            var leftVar = computeStripVariance(leftStripData, leftProfile, leftStripW, patchSize, 'y');
+            noiseStdDev = noiseStdDev > 0 ? (noiseStdDev + leftVar) / 2 : leftVar;
+        }
+
+        // --- Build output patch via inverse-distance interpolation ---
+        var patchData = ctx.getImageData(patchX, patchY, patchSize, patchSize);
+        var pixels = patchData.data;
+        var SQRT2 = Math.sqrt(2);
+
+        for (var y = 0; y < patchSize; y++) {
+            for (var x = 0; x < patchSize; x++) {
+                var dTop = (y + 1) / patchSize;      // 0 near top edge, 1 at bottom
+                var dLeft = (x + 1) / patchSize;     // 0 near left edge, 1 at right
+                var dCorner = Math.sqrt(dTop * dTop + dLeft * dLeft) / SQRT2;
+
+                var wTop = 1 / (dTop + EPS);
+                var wLeft = 1 / (dLeft + EPS);
+                var wCorner = 1 / (dCorner + EPS);
+                var wSum = wTop + wLeft + wCorner;
+                wTop /= wSum;
+                wLeft /= wSum;
+                wCorner /= wSum;
+
+                var tp = topProfile[x];
+                var lp = leftProfile[y];
+
+                var r = tp[0] * wTop + lp[0] * wLeft + cornerR * wCorner;
+                var g = tp[1] * wTop + lp[1] * wLeft + cornerG * wCorner;
+                var b = tp[2] * wTop + lp[2] * wLeft + cornerB * wCorner;
+
+                // Add calibrated noise (50% of measured stddev)
+                if (noiseStdDev > 0) {
+                    r += gaussianNoise() * noiseStdDev * 0.5;
+                    g += gaussianNoise() * noiseStdDev * 0.5;
+                    b += gaussianNoise() * noiseStdDev * 0.5;
+                }
+
+                var idx = (y * patchSize + x) * 4;
+                pixels[idx]     = Math.max(0, Math.min(255, Math.round(r)));
+                pixels[idx + 1] = Math.max(0, Math.min(255, Math.round(g)));
+                pixels[idx + 2] = Math.max(0, Math.min(255, Math.round(b)));
+                pixels[idx + 3] = 255; // fully opaque
+            }
+        }
+
         ctx.putImageData(patchData, patchX, patchY);
     }
 
@@ -2072,7 +2201,7 @@
             return;
         }
 
-        var patchSize = parseInt(elements.watermarkPatchSlider.value, 10) || 60;
+        var patchSize = parseInt(elements.watermarkPatchSlider.value, 10) || computePatchSize(originalWidth, originalHeight);
 
         // Warn if patch is too large relative to image
         var minDim = Math.min(originalWidth, originalHeight);
