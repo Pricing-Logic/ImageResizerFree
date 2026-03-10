@@ -40,6 +40,14 @@
                 <button class="tab-btn" data-tool="background" role="tab" aria-selected="false">Remove BG</button>
                 <button class="tab-btn" data-tool="advancedbg" role="tab" aria-selected="false">Advanced BG</button>
                 <button class="tab-btn" data-tool="watermark" role="tab" aria-selected="false">Watermark</button>
+                <button class="tab-btn" data-tool="adjust" role="tab" aria-selected="false">Adjust</button>
+                <button class="tab-btn" data-tool="filters" role="tab" aria-selected="false">Filters</button>
+                <button class="tab-btn" data-tool="format-convert" role="tab" aria-selected="false">Convert</button>
+                <button class="tab-btn" data-tool="target-size" role="tab" aria-selected="false">Target Size</button>
+                <button class="tab-btn" data-tool="addwm" role="tab" aria-selected="false">Add WM</button>
+                <button class="tab-btn" data-tool="enhance" role="tab" aria-selected="false">Enhance</button>
+                <button class="tab-btn" data-tool="topdf" role="tab" aria-selected="false">To PDF</button>
+                <button class="tab-btn" data-tool="batch" role="tab" aria-selected="false">Batch</button>
             </nav>
 
             <!-- Shared Upload Zone -->
@@ -548,6 +556,612 @@
                     </div>
                 </section>
 
+                <!-- COLOUR CORRECTION (ADJUST) PANEL -->
+                <section class="tool-panel" id="adjust-panel" role="tabpanel">
+                    <p class="tool-description">Fine-tune brightness, contrast, saturation, and hue. Live preview updates as you drag.</p>
+
+                    <div class="control-group">
+                        <div class="label-row">
+                            <label class="section-label">BRIGHTNESS</label>
+                            <span class="value-badge" id="adjust-brightness-val">100</span>
+                        </div>
+                        <div class="slider-container">
+                            <input type="range" min="50" max="150" value="100" class="vintage-slider" id="adjust-brightness">
+                            <div class="ruler-marks">
+                                <span>50</span><span>100</span><span>150</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="control-group">
+                        <div class="label-row">
+                            <label class="section-label">CONTRAST</label>
+                            <span class="value-badge" id="adjust-contrast-val">100</span>
+                        </div>
+                        <div class="slider-container">
+                            <input type="range" min="50" max="150" value="100" class="vintage-slider" id="adjust-contrast">
+                            <div class="ruler-marks">
+                                <span>50</span><span>100</span><span>150</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="control-group">
+                        <div class="label-row">
+                            <label class="section-label">SATURATION</label>
+                            <span class="value-badge" id="adjust-saturation-val">100</span>
+                        </div>
+                        <div class="slider-container">
+                            <input type="range" min="0" max="200" value="100" class="vintage-slider" id="adjust-saturation">
+                            <div class="ruler-marks">
+                                <span>0</span><span>100</span><span>200</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="control-group">
+                        <div class="label-row">
+                            <label class="section-label">HUE ROTATE</label>
+                            <span class="value-badge" id="adjust-hue-val">0°</span>
+                        </div>
+                        <div class="slider-container">
+                            <input type="range" min="0" max="360" value="0" class="vintage-slider" id="adjust-hue">
+                            <div class="ruler-marks">
+                                <span>0°</span><span>180°</span><span>360°</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="control-row">
+                        <div class="control-group flex-grow">
+                            <div class="label-row">
+                                <label class="section-label">QUALITY</label>
+                                <span class="value-badge" id="adjust-quality-val">90%</span>
+                            </div>
+                            <div class="slider-container">
+                                <input type="range" min="1" max="100" value="90" class="vintage-slider" id="adjust-quality-slider">
+                                <div class="ruler-marks">
+                                    <span>0</span><span>50</span><span>100</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="control-group">
+                            <label class="section-label">FORMAT</label>
+                            <select class="vintage-select" id="adjust-format-select">
+                                <option value="jpeg">JPEG</option>
+                                <option value="png">PNG</option>
+                                <option value="webp">WebP</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="control-group filename-group">
+                        <label class="section-label">FILENAME</label>
+                        <div class="filename-input-wrapper">
+                            <input type="text" id="adjust-filename" class="vintage-input filename-input" placeholder="my-image">
+                            <span class="filename-ext" id="adjust-filename-ext">.jpeg</span>
+                        </div>
+                    </div>
+
+                    <div class="action-footer">
+                        <button class="adjust-reset-btn" id="adjust-reset-btn">Reset All</button>
+                        <button class="btn-primary" id="adjust-btn">
+                            <span class="btn-text">ADJUST & DOWNLOAD</span>
+                            <span class="btn-sub">Colour Corrected</span>
+                        </button>
+                    </div>
+                </section>
+
+                <!-- FILTERS / PRESET EFFECTS PANEL -->
+                <section class="tool-panel" id="filters-panel" role="tabpanel">
+                    <p class="tool-description">Apply a one-click preset effect. Click a thumbnail to select it, then download.</p>
+
+                    <div class="filters-grid" id="filters-grid">
+                        <!-- Thumbnails rendered by JS -->
+                    </div>
+
+                    <div class="control-row">
+                        <div class="control-group flex-grow">
+                            <div class="label-row">
+                                <label class="section-label">QUALITY</label>
+                                <span class="value-badge" id="filters-quality-val">90%</span>
+                            </div>
+                            <div class="slider-container">
+                                <input type="range" min="1" max="100" value="90" class="vintage-slider" id="filters-quality-slider">
+                                <div class="ruler-marks">
+                                    <span>0</span><span>50</span><span>100</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="control-group">
+                            <label class="section-label">FORMAT</label>
+                            <select class="vintage-select" id="filters-format-select">
+                                <option value="jpeg">JPEG</option>
+                                <option value="png">PNG</option>
+                                <option value="webp">WebP</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="control-group filename-group">
+                        <label class="section-label">FILENAME</label>
+                        <div class="filename-input-wrapper">
+                            <input type="text" id="filters-filename" class="vintage-input filename-input" placeholder="my-image">
+                            <span class="filename-ext" id="filters-filename-ext">.jpeg</span>
+                        </div>
+                    </div>
+
+                    <div class="action-footer">
+                        <button class="btn-primary" id="filters-btn">
+                            <span class="btn-text">APPLY & DOWNLOAD</span>
+                            <span class="btn-sub">Preset Effect</span>
+                        </button>
+                    </div>
+                </section>
+
+                <!-- FORMAT CONVERSION PANEL -->
+                <section class="tool-panel" id="format-convert-panel" role="tabpanel">
+                    <p class="tool-description">Convert your image to a different format. Estimated output size updates as you adjust format and quality.</p>
+
+                    <div class="control-row">
+                        <div class="control-group flex-grow">
+                            <div class="label-row">
+                                <label class="section-label">QUALITY</label>
+                                <span class="value-badge" id="fc-quality-val">85%</span>
+                            </div>
+                            <div class="slider-container">
+                                <input type="range" min="1" max="100" value="85" class="vintage-slider" id="fc-quality-slider">
+                                <div class="ruler-marks">
+                                    <span>0</span><span>50</span><span>100</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="control-group">
+                            <label class="section-label">FORMAT</label>
+                            <select class="vintage-select" id="fc-format-select">
+                                <option value="jpeg">JPEG</option>
+                                <option value="png">PNG</option>
+                                <option value="webp">WebP</option>
+                                <option value="avif">AVIF</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="fc-size-estimate" id="fc-size-estimate">
+                        <span class="section-label">ESTIMATED SIZE</span>
+                        <span class="fc-size-value" id="fc-size-value">Upload an image to estimate</span>
+                    </div>
+
+                    <div id="fc-avif-warning" class="fc-avif-warning hidden">
+                        AVIF not supported in this browser. Try Chrome or Edge.
+                    </div>
+
+                    <div class="control-group filename-group">
+                        <label class="section-label">FILENAME</label>
+                        <div class="filename-input-wrapper">
+                            <input type="text" id="fc-filename" class="vintage-input filename-input" placeholder="my-image">
+                            <span class="filename-ext" id="fc-filename-ext">.jpeg</span>
+                        </div>
+                    </div>
+
+                    <div class="action-footer">
+                        <button class="btn-primary" id="fc-download-btn">
+                            <span class="btn-text">CONVERT & DOWNLOAD</span>
+                            <span class="btn-sub">Format Converted</span>
+                        </button>
+                    </div>
+                </section>
+
+                <!-- TARGET SIZE PANEL -->
+                <section class="tool-panel" id="target-size-panel" role="tabpanel">
+                    <p class="tool-description">Find the optimal quality setting to hit a specific file size target. Uses binary search across 8 attempts.</p>
+
+                    <div class="control-row">
+                        <div class="control-group flex-grow">
+                            <label class="section-label">TARGET SIZE (KB)</label>
+                            <input type="number" id="ts-target-kb" class="vintage-input" placeholder="500" min="1" max="50000" value="500">
+                        </div>
+
+                        <div class="control-group">
+                            <label class="section-label">FORMAT</label>
+                            <select class="vintage-select" id="ts-format-select">
+                                <option value="jpeg">JPEG</option>
+                                <option value="webp">WebP</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="action-footer ts-search-footer">
+                        <button class="btn-primary" id="ts-search-btn">
+                            <span class="btn-text">FIND OPTIMAL QUALITY</span>
+                            <span class="btn-sub">Binary Search</span>
+                        </button>
+                    </div>
+
+                    <div class="ts-progress hidden" id="ts-progress">
+                        <div class="ts-progress-text" id="ts-progress-text">Searching...</div>
+                        <div class="progress-bar">
+                            <div class="progress-fill" id="ts-progress-fill"></div>
+                        </div>
+                    </div>
+
+                    <div class="ts-result hidden" id="ts-result">
+                        <span class="ts-result-text" id="ts-result-text"></span>
+                    </div>
+
+                    <div class="control-group filename-group">
+                        <label class="section-label">FILENAME</label>
+                        <div class="filename-input-wrapper">
+                            <input type="text" id="ts-filename" class="vintage-input filename-input" placeholder="my-image">
+                            <span class="filename-ext" id="ts-filename-ext">.jpeg</span>
+                        </div>
+                    </div>
+
+                    <div class="action-footer">
+                        <button class="btn-primary" id="ts-download-btn" disabled>
+                            <span class="btn-text">DOWNLOAD</span>
+                            <span class="btn-sub">Optimized File</span>
+                        </button>
+                    </div>
+                </section>
+
+                <!-- ADD WATERMARK PANEL -->
+                <section class="tool-panel" id="addwm-panel" role="tabpanel">
+                    <p class="tool-description">Add a text watermark to your image. Supports tiling, rotation, and custom colours. 100% client-side.</p>
+
+                    <div class="control-group">
+                        <label class="section-label" for="addwm-text">WATERMARK TEXT</label>
+                        <input type="text" id="addwm-text" class="vintage-input" placeholder="Your watermark text" value="© My Brand">
+                    </div>
+
+                    <div class="control-row">
+                        <div class="control-group flex-grow">
+                            <div class="label-row">
+                                <label class="section-label">FONT SIZE</label>
+                                <span class="value-badge" id="addwm-size-val">36px</span>
+                            </div>
+                            <div class="slider-container">
+                                <input type="range" min="12" max="120" value="36" class="vintage-slider" id="addwm-size-slider">
+                                <div class="ruler-marks">
+                                    <span>12</span><span>66</span><span>120</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="control-group flex-grow">
+                            <div class="label-row">
+                                <label class="section-label">OPACITY</label>
+                                <span class="value-badge" id="addwm-opacity-val">50%</span>
+                            </div>
+                            <div class="slider-container">
+                                <input type="range" min="10" max="100" value="50" class="vintage-slider" id="addwm-opacity-slider">
+                                <div class="ruler-marks">
+                                    <span>10</span><span>55</span><span>100</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="control-row">
+                        <div class="control-group flex-grow">
+                            <div class="label-row">
+                                <label class="section-label">ROTATION</label>
+                                <span class="value-badge" id="addwm-rotation-val">-30°</span>
+                            </div>
+                            <div class="slider-container">
+                                <input type="range" min="-45" max="45" value="-30" class="vintage-slider" id="addwm-rotation-slider">
+                                <div class="ruler-marks">
+                                    <span>-45°</span><span>0°</span><span>45°</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="control-group">
+                            <label class="section-label">COLOUR</label>
+                            <input type="color" id="addwm-colour" class="addwm-colour-picker" value="#ffffff">
+                        </div>
+                    </div>
+
+                    <div class="control-row">
+                        <div class="control-group flex-grow">
+                            <label class="section-label">POSITION</label>
+                            <select class="vintage-select" id="addwm-position">
+                                <option value="center">Center</option>
+                                <option value="bottom-right">Bottom-Right</option>
+                                <option value="bottom-left">Bottom-Left</option>
+                                <option value="top-right">Top-Right</option>
+                                <option value="top-left">Top-Left</option>
+                                <option value="tile">Tile (Repeat)</option>
+                            </select>
+                        </div>
+
+                        <div class="control-group">
+                            <label class="section-label">FORMAT</label>
+                            <select class="vintage-select" id="addwm-format-select">
+                                <option value="jpeg">JPEG</option>
+                                <option value="png">PNG</option>
+                                <option value="webp">WebP</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="control-group flex-grow">
+                        <div class="label-row">
+                            <label class="section-label">QUALITY</label>
+                            <span class="value-badge" id="addwm-quality-val">90%</span>
+                        </div>
+                        <div class="slider-container">
+                            <input type="range" min="1" max="100" value="90" class="vintage-slider" id="addwm-quality-slider">
+                            <div class="ruler-marks">
+                                <span>0</span><span>50</span><span>100</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="control-group filename-group">
+                        <label class="section-label">FILENAME</label>
+                        <div class="filename-input-wrapper">
+                            <input type="text" id="addwm-filename" class="vintage-input filename-input" placeholder="my-image">
+                            <span class="filename-ext" id="addwm-filename-ext">.jpeg</span>
+                        </div>
+                    </div>
+
+                    <div class="action-footer">
+                        <button class="btn-primary" id="addwm-btn">
+                            <span class="btn-text">ADD WATERMARK & DOWNLOAD</span>
+                            <span class="btn-sub">Your Brand, Protected</span>
+                        </button>
+                    </div>
+                </section>
+
+                <!-- AUTO-ENHANCE PANEL -->
+                <section class="tool-panel" id="enhance-panel" role="tabpanel">
+                    <p class="tool-description">Auto-enhance your image using histogram stretching. Expands the tonal range to boost contrast and clarity. 100% client-side.</p>
+
+                    <div class="enhance-action-area">
+                        <button class="btn-enhance" id="enhance-run-btn">
+                            <span class="btn-text">AUTO-ENHANCE</span>
+                            <span class="btn-sub">Analyse &amp; Adjust Levels</span>
+                        </button>
+                    </div>
+
+                    <div class="enhance-results hidden" id="enhance-results">
+                        <div class="section-label">ADJUSTMENTS APPLIED</div>
+                        <div class="enhance-stats" id="enhance-stats">
+                            <!-- Populated by JS -->
+                        </div>
+                    </div>
+
+                    <div class="control-group enhance-strength-group hidden" id="enhance-strength-group">
+                        <div class="label-row">
+                            <label class="section-label">STRENGTH</label>
+                            <span class="value-badge" id="enhance-strength-val">100%</span>
+                        </div>
+                        <div class="slider-container">
+                            <input type="range" min="0" max="100" value="100" class="vintage-slider" id="enhance-strength-slider">
+                            <div class="ruler-marks">
+                                <span>0</span><span>50</span><span>100</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="control-row">
+                        <div class="control-group flex-grow">
+                            <div class="label-row">
+                                <label class="section-label">QUALITY</label>
+                                <span class="value-badge" id="enhance-quality-val">90%</span>
+                            </div>
+                            <div class="slider-container">
+                                <input type="range" min="1" max="100" value="90" class="vintage-slider" id="enhance-quality-slider">
+                                <div class="ruler-marks">
+                                    <span>0</span><span>50</span><span>100</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="control-group">
+                            <label class="section-label">FORMAT</label>
+                            <select class="vintage-select" id="enhance-format-select">
+                                <option value="jpeg">JPEG</option>
+                                <option value="png">PNG</option>
+                                <option value="webp">WebP</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="control-group filename-group">
+                        <label class="section-label">FILENAME</label>
+                        <div class="filename-input-wrapper">
+                            <input type="text" id="enhance-filename" class="vintage-input filename-input" placeholder="my-image">
+                            <span class="filename-ext" id="enhance-filename-ext">.jpeg</span>
+                        </div>
+                    </div>
+
+                    <div class="action-footer">
+                        <button class="btn-primary" id="enhance-download-btn" disabled>
+                            <span class="btn-text">DOWNLOAD ENHANCED</span>
+                            <span class="btn-sub">Levels Optimised</span>
+                        </button>
+                    </div>
+                </section>
+
+                <!-- IMAGE TO PDF PANEL -->
+                <section class="tool-panel" id="topdf-panel" role="tabpanel">
+                    <p class="tool-description">Combine multiple images into a single PDF. All processing happens in your browser.</p>
+
+                    <div class="upload-zone pdf-upload-zone" id="pdf-drop-zone">
+                        <input type="file" id="pdf-file-input" hidden accept="image/*" multiple>
+                        <div class="upload-content">
+                            <h3>Drop images here</h3>
+                            <p>or click to browse (multiple files supported)</p>
+                        </div>
+                    </div>
+
+                    <div class="file-list-container hidden" id="pdf-file-list-container">
+                        <div class="section-label">IMAGES (<span id="pdf-file-count">0</span>)</div>
+                        <ul class="file-list pdf-thumb-list" id="pdf-file-list"></ul>
+                        <button class="clear-list-btn" id="pdf-clear-btn">Clear All</button>
+                    </div>
+
+                    <div class="control-row">
+                        <div class="control-group">
+                            <label class="section-label">PAGE SIZE</label>
+                            <select class="vintage-select" id="pdf-page-size">
+                                <option value="a4">A4</option>
+                                <option value="letter">Letter</option>
+                                <option value="original">Original (fit image)</option>
+                            </select>
+                        </div>
+                        <div class="control-group">
+                            <label class="section-label">ORIENTATION</label>
+                            <select class="vintage-select" id="pdf-orientation">
+                                <option value="auto">Auto (by aspect ratio)</option>
+                                <option value="portrait">Portrait</option>
+                                <option value="landscape">Landscape</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="control-group">
+                        <div class="label-row">
+                            <label class="section-label">MARGIN (PX)</label>
+                            <span class="value-badge" id="pdf-margin-val">10px</span>
+                        </div>
+                        <div class="slider-container">
+                            <input type="range" min="0" max="50" value="10" class="vintage-slider" id="pdf-margin-slider">
+                            <div class="ruler-marks">
+                                <span>0</span><span>25</span><span>50</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="control-group filename-group">
+                        <label class="section-label">PDF FILENAME</label>
+                        <div class="filename-input-wrapper">
+                            <input type="text" id="pdf-filename" class="vintage-input filename-input" placeholder="my-document">
+                            <span class="filename-ext">.pdf</span>
+                        </div>
+                    </div>
+
+                    <div class="action-footer">
+                        <button class="btn-primary" id="pdf-create-btn">
+                            <span class="btn-text">CREATE PDF</span>
+                            <span class="btn-sub">Download Ready</span>
+                        </button>
+                    </div>
+                </section>
+
+                <!-- BATCH PROCESSING PANEL -->
+                <section class="tool-panel" id="batch-panel" role="tabpanel">
+                    <p class="tool-description">Apply one operation to up to 50 images at once. Downloads as a ZIP file.</p>
+
+                    <div class="upload-zone batch-upload-zone" id="batch-drop-zone">
+                        <input type="file" id="batch-file-input" hidden accept="image/*" multiple>
+                        <div class="upload-content">
+                            <h3>Drop images here</h3>
+                            <p>or click to browse (up to 50 files)</p>
+                        </div>
+                    </div>
+
+                    <div class="file-list-container hidden" id="batch-file-list-container">
+                        <div class="section-label">FILES (<span id="batch-file-count">0</span>)</div>
+                        <ul class="file-list" id="batch-file-list"></ul>
+                        <button class="clear-list-btn" id="batch-clear-btn">Clear All</button>
+                    </div>
+
+                    <div class="control-group">
+                        <label class="section-label">OPERATION</label>
+                        <select class="vintage-select" id="batch-operation">
+                            <option value="resize">Resize</option>
+                            <option value="compress">Compress</option>
+                            <option value="convert">Convert Format</option>
+                        </select>
+                    </div>
+
+                    <!-- Resize sub-controls -->
+                    <div id="batch-resize-controls" class="batch-sub-controls">
+                        <div class="control-row">
+                            <div class="control-group flex-grow">
+                                <div class="input-wrapper">
+                                    <label for="batch-width">Width (px)</label>
+                                    <input type="number" id="batch-width" class="vintage-input" placeholder="1920">
+                                </div>
+                            </div>
+                            <div class="control-group" style="display:flex;align-items:flex-end;padding-bottom:0">
+                                <button class="lock-btn active" id="batch-lock-btn" title="Lock Aspect Ratio">
+                                    <svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" fill="none" stroke-width="2">
+                                        <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" />
+                                        <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" />
+                                    </svg>
+                                </button>
+                            </div>
+                            <div class="control-group flex-grow">
+                                <div class="input-wrapper">
+                                    <label for="batch-height">Height (px)</label>
+                                    <input type="number" id="batch-height" class="vintage-input" placeholder="1080">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Compress sub-controls -->
+                    <div id="batch-compress-controls" class="batch-sub-controls hidden">
+                        <div class="control-group">
+                            <div class="label-row">
+                                <label class="section-label">QUALITY</label>
+                                <span class="value-badge" id="batch-quality-val">80%</span>
+                            </div>
+                            <div class="slider-container">
+                                <input type="range" min="1" max="100" value="80" class="vintage-slider" id="batch-quality-slider">
+                                <div class="ruler-marks">
+                                    <span>0</span><span>50</span><span>100</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Convert sub-controls -->
+                    <div id="batch-convert-controls" class="batch-sub-controls hidden">
+                        <div class="control-group">
+                            <label class="section-label">OUTPUT FORMAT</label>
+                            <select class="vintage-select" id="batch-format">
+                                <option value="jpeg">JPEG</option>
+                                <option value="png">PNG</option>
+                                <option value="webp">WebP</option>
+                                <option value="avif">AVIF</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- Progress -->
+                    <div class="batch-progress hidden" id="batch-progress">
+                        <div class="progress-bar">
+                            <div class="progress-fill" id="batch-progress-fill"></div>
+                        </div>
+                        <span class="progress-text" id="batch-progress-text">Processing...</span>
+                    </div>
+
+                    <!-- Results list -->
+                    <div class="batch-results hidden" id="batch-results">
+                        <div class="section-label">RESULTS</div>
+                        <ul class="file-list batch-results-list" id="batch-results-list"></ul>
+                    </div>
+
+                    <div class="action-footer">
+                        <button class="btn-primary" id="batch-process-btn">
+                            <span class="btn-text">PROCESS ALL</span>
+                            <span class="btn-sub">Download as ZIP</span>
+                        </button>
+                        <button class="btn-primary batch-zip-btn hidden" id="batch-zip-btn" style="margin-top:0.75rem">
+                            <span class="btn-text">DOWNLOAD ALL (ZIP)</span>
+                            <span class="btn-sub">All Processed Images</span>
+                        </button>
+                    </div>
+                </section>
+
             </div>
 
         </div>
@@ -573,6 +1187,7 @@
 
     </main>
     
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.2/jspdf.umd.min.js" crossorigin="anonymous"></script>
     <script src="libs/jszip.min.js" integrity="sha384-+mbV2IY1Zk/X1p/nWllGySJSUN8uMs+gUAN10Or95UBH0fpj6GfKgPmgC5EXieXG" crossorigin="anonymous"></script>
     <script src="libs/heic2any.min.js" integrity="sha384-OTofQ0MEeiSgh62havBcemCIK0gqj809wX6UA0uPISNMRnR6NZyCdGzX3SbLrgwL" crossorigin="anonymous"></script>
     <script src="libs/mediapipe/selfie_segmentation.js" integrity="sha384-J/3LshwuX+2viPOY3En4QiZvdvlffDhZYH5MsMuLGdwcoGcYSA7EV1jXFsys0gIb" crossorigin="anonymous"></script>

@@ -1201,6 +1201,337 @@ body {
     margin-bottom: 0.75rem;
 }
 
+/* --- Adjust Tool --- */
+.adjust-reset-btn {
+    font-family: var(--font-heading);
+    font-size: 0.85rem;
+    font-weight: 600;
+    background: transparent;
+    border: 1px solid var(--faded-sage);
+    color: var(--faded-sage);
+    padding: 0.5rem 1.2rem;
+    cursor: pointer;
+    border-radius: 4px;
+    margin-right: 1rem;
+    transition: all 0.2s;
+}
+
+.adjust-reset-btn:hover {
+    border-color: var(--barn-red);
+    color: var(--barn-red);
+}
+
+/* --- Filters Tool --- */
+.filters-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+    gap: 0.75rem;
+    margin-bottom: 1.5rem;
+}
+
+.filter-thumb {
+    cursor: pointer;
+    border: 2px solid transparent;
+    border-radius: 4px;
+    overflow: hidden;
+    background: var(--input-bg);
+    transition: border-color 0.15s, box-shadow 0.15s;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+.filter-thumb:hover {
+    border-color: var(--warm-gold);
+}
+
+.filter-thumb.selected {
+    border-color: var(--barn-red);
+    box-shadow: 0 0 0 2px rgba(139, 38, 53, 0.25);
+}
+
+.filter-thumb canvas {
+    width: 100%;
+    height: auto;
+    display: block;
+}
+
+.filter-thumb-label {
+    font-family: var(--font-heading);
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--navy-blue);
+    padding: 0.3rem 0.4rem;
+    text-align: center;
+    letter-spacing: 0.02em;
+}
+
+.filters-empty {
+    font-style: italic;
+    color: var(--faded-sage);
+    text-align: center;
+    padding: 2rem;
+    font-size: 0.9rem;
+    grid-column: 1 / -1;
+}
+
+/* ===========================================
+   FORMAT CONVERT TOOL
+   =========================================== */
+
+.fc-size-estimate {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    background: rgba(212, 168, 75, 0.1);
+    border: 1px solid var(--warm-gold);
+    border-radius: 4px;
+    padding: 0.75rem 1rem;
+    margin-bottom: 1.5rem;
+}
+
+.fc-size-estimate .section-label {
+    margin-bottom: 0;
+    white-space: nowrap;
+}
+
+.fc-size-value {
+    font-family: var(--font-tech);
+    font-size: 1rem;
+    color: var(--navy-blue);
+    font-weight: 500;
+}
+
+.fc-avif-warning {
+    background: rgba(139, 38, 53, 0.08);
+    border: 1px solid var(--barn-red);
+    border-radius: 4px;
+    padding: 0.6rem 1rem;
+    font-family: var(--font-tech);
+    font-size: 0.85rem;
+    color: var(--barn-red);
+    margin-bottom: 1.5rem;
+}
+
+/* ===========================================
+   TARGET SIZE TOOL
+   =========================================== */
+
+.ts-search-footer {
+    margin-top: 1rem;
+    margin-bottom: 1.5rem;
+}
+
+.ts-progress {
+    margin-bottom: 1.5rem;
+    text-align: center;
+}
+
+.ts-progress-text {
+    font-family: var(--font-tech);
+    font-size: 0.9rem;
+    color: var(--charcoal);
+    margin-bottom: 0.5rem;
+}
+
+.ts-result {
+    background: rgba(30, 58, 95, 0.08);
+    border: 1px solid var(--navy-blue);
+    border-radius: 4px;
+    padding: 0.75rem 1rem;
+    margin-bottom: 1.5rem;
+    text-align: center;
+}
+
+.ts-result-text {
+    font-family: var(--font-tech);
+    font-size: 0.95rem;
+    color: var(--navy-blue);
+    font-weight: 500;
+}
+
+/* ============================================
+   ADD WATERMARK TOOL
+   ============================================ */
+
+.addwm-colour-picker {
+    width: 100%;
+    height: 42px;
+    padding: 2px 4px;
+    border: 1px solid #D1C7B1;
+    border-bottom: 2px solid var(--charcoal);
+    background: var(--input-bg);
+    cursor: pointer;
+    border-radius: 0;
+    box-shadow: inset 1px 1px 4px rgba(0,0,0,0.05);
+    transition: border-color 0.2s;
+}
+
+.addwm-colour-picker:focus {
+    outline: none;
+    border-bottom-color: var(--warm-gold);
+}
+
+/* ============================================
+   AUTO-ENHANCE TOOL
+   ============================================ */
+
+.enhance-action-area {
+    display: flex;
+    justify-content: center;
+    margin: 1rem 0 2rem;
+}
+
+.btn-enhance {
+    font-family: var(--font-heading);
+    font-weight: 900;
+    font-size: 1.2rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: #fff;
+    background: var(--navy-blue);
+    border: none;
+    padding: 1.25rem 2.5rem;
+    cursor: pointer;
+    border-radius: 4px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.25rem;
+    box-shadow:
+        0 4px 6px -1px rgba(0,0,0,0.15),
+        3px 3px 0px rgba(30, 58, 95, 0.3);
+    transition: all 0.15s ease;
+}
+
+.btn-enhance .btn-sub {
+    font-size: 0.7rem;
+    font-family: var(--font-tech);
+    font-weight: 400;
+    opacity: 0.75;
+    letter-spacing: 0.04em;
+    text-transform: none;
+}
+
+.btn-enhance:hover {
+    background: var(--barn-red);
+    transform: translateY(-1px);
+    box-shadow:
+        0 6px 10px -1px rgba(0,0,0,0.2),
+        3px 4px 0px rgba(139, 38, 53, 0.3);
+}
+
+.btn-enhance:active {
+    transform: translateY(1px);
+    box-shadow: 1px 1px 0px rgba(0,0,0,0.2);
+}
+
+.enhance-results {
+    background: rgba(212, 168, 75, 0.1);
+    border: 1px solid var(--warm-gold);
+    border-radius: 4px;
+    padding: 1rem;
+    margin-bottom: 1.5rem;
+}
+
+.enhance-stats {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+    margin-top: 0.5rem;
+}
+
+.enhance-stat-item {
+    font-family: var(--font-tech);
+    font-size: 0.85rem;
+    color: var(--charcoal);
+    background: rgba(255,255,255,0.6);
+    border: 1px solid #D1C7B1;
+    border-radius: 3px;
+    padding: 0.3rem 0.7rem;
+}
+
+.enhance-stat-item strong {
+    color: var(--navy-blue);
+}
+
+/* ===========================================
+   PDF TOOL
+   =========================================== */
+
+.pdf-upload-zone {
+    padding: 1.5rem 1rem;
+    margin-bottom: 1rem;
+}
+
+.pdf-upload-zone h3 {
+    font-size: 1.2rem;
+}
+
+.pdf-thumb-list li {
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.pdf-thumb {
+    width: 36px;
+    height: 36px;
+    object-fit: cover;
+    border: 1px solid #D1C7B1;
+    border-radius: 2px;
+    flex-shrink: 0;
+}
+
+/* ===========================================
+   BATCH TOOL
+   =========================================== */
+
+.batch-upload-zone {
+    padding: 1.5rem 1rem;
+    margin-bottom: 1rem;
+}
+
+.batch-upload-zone h3 {
+    font-size: 1.2rem;
+}
+
+.batch-sub-controls {
+    margin-bottom: 1rem;
+}
+
+.batch-progress {
+    margin: 1rem 0;
+}
+
+.batch-results {
+    margin-bottom: 1rem;
+    background: var(--input-bg);
+    border: 1px solid #D1C7B1;
+    border-radius: 4px;
+    padding: 1rem;
+}
+
+.batch-results-list {
+    max-height: 200px;
+}
+
+.batch-results-list .download-link {
+    font-family: var(--font-tech);
+    font-size: 0.8rem;
+    color: var(--barn-red);
+    text-decoration: none;
+    flex-shrink: 0;
+}
+
+.batch-results-list .download-link:hover {
+    text-decoration: underline;
+}
+
+.batch-zip-btn {
+    display: block;
+    width: 100%;
+}
+
 /* Blog Panel Mobile */
 @media (max-width: 900px) {
     .page-layout {

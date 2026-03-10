@@ -196,7 +196,64 @@
         resizeCopyBtn: document.getElementById('resize-copy-btn'),
         compressCopyBtn: document.getElementById('compress-copy-btn'),
         cropCopyBtn: document.getElementById('crop-copy-btn'),
-        metadataCopyBtn: document.getElementById('metadata-copy-btn')
+        metadataCopyBtn: document.getElementById('metadata-copy-btn'),
+
+        // Adjust (Colour Correction)
+        adjustBrightness: document.getElementById('adjust-brightness'),
+        adjustBrightnessVal: document.getElementById('adjust-brightness-val'),
+        adjustContrast: document.getElementById('adjust-contrast'),
+        adjustContrastVal: document.getElementById('adjust-contrast-val'),
+        adjustSaturation: document.getElementById('adjust-saturation'),
+        adjustSaturationVal: document.getElementById('adjust-saturation-val'),
+        adjustHue: document.getElementById('adjust-hue'),
+        adjustHueVal: document.getElementById('adjust-hue-val'),
+        adjustQualitySlider: document.getElementById('adjust-quality-slider'),
+        adjustQualityVal: document.getElementById('adjust-quality-val'),
+        adjustFormatSelect: document.getElementById('adjust-format-select'),
+        adjustFilename: document.getElementById('adjust-filename'),
+        adjustFilenameExt: document.getElementById('adjust-filename-ext'),
+        adjustResetBtn: document.getElementById('adjust-reset-btn'),
+        adjustBtn: document.getElementById('adjust-btn'),
+
+        // Filters (Preset Effects)
+        filtersGrid: document.getElementById('filters-grid'),
+        filtersQualitySlider: document.getElementById('filters-quality-slider'),
+        filtersQualityVal: document.getElementById('filters-quality-val'),
+        filtersFormatSelect: document.getElementById('filters-format-select'),
+        filtersFilename: document.getElementById('filters-filename'),
+        filtersFilenameExt: document.getElementById('filters-filename-ext'),
+        filtersBtn: document.getElementById('filters-btn'),
+
+        // Add Watermark
+        addwmText: document.getElementById('addwm-text'),
+        addwmSizeSlider: document.getElementById('addwm-size-slider'),
+        addwmSizeVal: document.getElementById('addwm-size-val'),
+        addwmOpacitySlider: document.getElementById('addwm-opacity-slider'),
+        addwmOpacityVal: document.getElementById('addwm-opacity-val'),
+        addwmRotationSlider: document.getElementById('addwm-rotation-slider'),
+        addwmRotationVal: document.getElementById('addwm-rotation-val'),
+        addwmColour: document.getElementById('addwm-colour'),
+        addwmPosition: document.getElementById('addwm-position'),
+        addwmFormatSelect: document.getElementById('addwm-format-select'),
+        addwmQualitySlider: document.getElementById('addwm-quality-slider'),
+        addwmQualityVal: document.getElementById('addwm-quality-val'),
+        addwmFilename: document.getElementById('addwm-filename'),
+        addwmFilenameExt: document.getElementById('addwm-filename-ext'),
+        addwmBtn: document.getElementById('addwm-btn'),
+
+        // Auto-Enhance
+        enhanceRunBtn: document.getElementById('enhance-run-btn'),
+        enhanceResults: document.getElementById('enhance-results'),
+        enhanceStats: document.getElementById('enhance-stats'),
+        enhanceStrengthGroup: document.getElementById('enhance-strength-group'),
+        enhanceStrengthSlider: document.getElementById('enhance-strength-slider'),
+        enhanceStrengthVal: document.getElementById('enhance-strength-val'),
+        enhanceQualitySlider: document.getElementById('enhance-quality-slider'),
+        enhanceQualityVal: document.getElementById('enhance-quality-val'),
+        enhanceFormatSelect: document.getElementById('enhance-format-select'),
+        enhanceFilename: document.getElementById('enhance-filename'),
+        enhanceFilenameExt: document.getElementById('enhance-filename-ext'),
+        enhanceDownloadBtn: document.getElementById('enhance-download-btn')
     };
 
     // ===========================================
@@ -309,6 +366,12 @@
         elements.cropFilename.value = `${baseName}_cropped`;
         elements.metadataFilename.value = `${baseName}_clean`;
         elements.watermarkFilename.value = `${baseName}_nowm`;
+        elements.adjustFilename.value = `${baseName}_adjusted`;
+        elements.filtersFilename.value = `${baseName}_filtered`;
+        if (elements.fcFilename) elements.fcFilename.value = `${baseName}_converted`;
+        if (elements.tsFilename) elements.tsFilename.value = `${baseName}_optimized`;
+        elements.addwmFilename.value = `${baseName}_watermarked`;
+        elements.enhanceFilename.value = `${baseName}_enhanced`;
     }
 
     /**
@@ -356,8 +419,25 @@
             p.classList.toggle('active', p.id === `${tool}-panel`);
         });
 
-        // Tools with their own upload zones (HEIC, Bulk, Background, Advanced BG)
-        const hasOwnUploadZone = (tool === 'convert' || tool === 'bulk' || tool === 'background' || tool === 'advancedbg');
+        // Apply or clear adjust preview filter on the shared preview image
+        if (tool === 'adjust') {
+            applyAdjustPreview();
+        } else {
+            clearAdjustPreview();
+        }
+
+        // Rebuild filter thumbnails when switching to filters tab
+        if (tool === 'filters') {
+            buildFilterThumbnails();
+        }
+
+        // Trigger size estimate when switching to format-convert with an image loaded
+        if (tool === 'format-convert' && originalImage) {
+            scheduleFcEstimate();
+        }
+
+        // Tools with their own upload zones (HEIC, Bulk, Background, Advanced BG, PDF, Batch)
+        const hasOwnUploadZone = (tool === 'convert' || tool === 'bulk' || tool === 'background' || tool === 'advancedbg' || tool === 'topdf' || tool === 'batch');
 
         if (hasOwnUploadZone) {
             // Hide shared upload zone and divider for multi-file tools
@@ -517,6 +597,23 @@
             cropCanvasContainer.classList.add('hidden');
             previewArea.classList.remove('hidden');
         }
+
+        // Apply adjust filter if that tool is active, otherwise clear
+        if (currentTool === 'adjust') {
+            applyAdjustPreview();
+        } else {
+            clearAdjustPreview();
+        }
+
+        // Rebuild filter thumbnails if filters tab is active
+        if (currentTool === 'filters') {
+            buildFilterThumbnails();
+        }
+
+        // Update format-convert size estimate if that tool is active
+        if (currentTool === 'format-convert') {
+            scheduleFcEstimate();
+        }
     }
 
     function resetState() {
@@ -543,6 +640,22 @@
 
         // Clean up canvas memory
         cleanupCanvas(elements.cropCanvas);
+
+        // Clear adjust preview filter and rebuild filters grid to empty state
+        clearAdjustPreview();
+        selectedFilterIndex = 0;
+        buildFilterThumbnails();
+
+        // Reset enhance state
+        enhanceOriginalData = null;
+        enhanceEnhancedData = null;
+        enhanceWidth = 0;
+        enhanceHeight = 0;
+        elements.enhanceResults.classList.add('hidden');
+        elements.enhanceStrengthGroup.classList.add('hidden');
+        elements.enhanceDownloadBtn.disabled = true;
+        elements.enhanceStrengthSlider.value = 100;
+        elements.enhanceStrengthVal.textContent = '100%';
     }
 
     // ===========================================
@@ -2295,6 +2408,1340 @@
     }
 
     // ===========================================
+    // ADJUST TOOL (COLOUR CORRECTION)
+    // ===========================================
+
+    function buildAdjustFilterString() {
+        const b = elements.adjustBrightness.value;
+        const c = elements.adjustContrast.value;
+        const s = elements.adjustSaturation.value;
+        const h = elements.adjustHue.value;
+        return `brightness(${b}%) contrast(${c}%) saturate(${s}%) hue-rotate(${h}deg)`;
+    }
+
+    function applyAdjustPreview() {
+        elements.imagePreview.style.filter = buildAdjustFilterString();
+    }
+
+    function clearAdjustPreview() {
+        elements.imagePreview.style.filter = '';
+    }
+
+    function initAdjustTool() {
+        const sliders = [
+            { el: elements.adjustBrightness, val: elements.adjustBrightnessVal, suffix: '' },
+            { el: elements.adjustContrast,   val: elements.adjustContrastVal,   suffix: '' },
+            { el: elements.adjustSaturation, val: elements.adjustSaturationVal, suffix: '' },
+            { el: elements.adjustHue,        val: elements.adjustHueVal,        suffix: '°' }
+        ];
+
+        sliders.forEach(({ el, val, suffix }) => {
+            el.addEventListener('input', () => {
+                val.textContent = el.value + suffix;
+                if (currentTool === 'adjust') applyAdjustPreview();
+            });
+        });
+
+        elements.adjustQualitySlider.addEventListener('input', () => {
+            elements.adjustQualityVal.textContent = elements.adjustQualitySlider.value + '%';
+        });
+
+        elements.adjustFormatSelect.addEventListener('change', () => {
+            updateQualityVisibility(elements.adjustFormatSelect, elements.adjustQualitySlider);
+            updateExtensionDisplay(elements.adjustFormatSelect, elements.adjustFilenameExt);
+        });
+
+        elements.adjustResetBtn.addEventListener('click', () => {
+            elements.adjustBrightness.value = 100;
+            elements.adjustBrightnessVal.textContent = '100';
+            elements.adjustContrast.value = 100;
+            elements.adjustContrastVal.textContent = '100';
+            elements.adjustSaturation.value = 100;
+            elements.adjustSaturationVal.textContent = '100';
+            elements.adjustHue.value = 0;
+            elements.adjustHueVal.textContent = '0°';
+            if (currentTool === 'adjust') applyAdjustPreview();
+        });
+
+        elements.adjustBtn.addEventListener('click', () => safeExecute(processAdjust, 'Adjust'));
+
+        updateQualityVisibility(elements.adjustFormatSelect, elements.adjustQualitySlider);
+        updateExtensionDisplay(elements.adjustFormatSelect, elements.adjustFilenameExt);
+    }
+
+    function processAdjust() {
+        if (!originalImage) {
+            alert('Please upload an image first.');
+            return;
+        }
+
+        const format = elements.adjustFormatSelect.value;
+        const quality = parseInt(elements.adjustQualitySlider.value, 10) / 100;
+        const filterStr = buildAdjustFilterString();
+        const filename = getDownloadFilename(elements.adjustFilename, '_adjusted', format);
+
+        const canvas = document.createElement('canvas');
+        canvas.width = originalWidth;
+        canvas.height = originalHeight;
+
+        const ctx = canvas.getContext('2d');
+        ctx.filter = filterStr;
+        ctx.drawImage(originalImage, 0, 0);
+
+        const mimeType = `image/${format === 'jpg' ? 'jpeg' : format}`;
+        canvas.toBlob(function(blob) {
+            downloadBlob(blob, filename);
+            cleanupCanvas(canvas);
+        }, mimeType, format === 'png' ? undefined : quality);
+    }
+
+    // ===========================================
+    // FILTERS TOOL (PRESET EFFECTS)
+    // ===========================================
+
+    const FILTER_PRESETS = [
+        { name: 'Original',      filter: 'none' },
+        { name: 'Vivid',         filter: 'saturate(1.5) contrast(1.1)' },
+        { name: 'Cool',          filter: 'saturate(0.9) hue-rotate(15deg) brightness(1.05)' },
+        { name: 'Warm',          filter: 'saturate(1.1) hue-rotate(-10deg) brightness(1.05) sepia(0.15)' },
+        { name: 'B&W',           filter: 'grayscale(1)' },
+        { name: 'Faded',         filter: 'contrast(0.85) brightness(1.1) saturate(0.7)' },
+        { name: 'Vintage',       filter: 'sepia(0.4) contrast(0.9) brightness(1.1)' },
+        { name: 'High Contrast', filter: 'contrast(1.4) brightness(1.05)' },
+        { name: 'Muted',         filter: 'saturate(0.5) brightness(1.05)' },
+        { name: 'Dramatic',      filter: 'contrast(1.3) saturate(1.2) brightness(0.95)' }
+    ];
+
+    let selectedFilterIndex = 0;
+
+    function buildFilterThumbnails() {
+        const grid = elements.filtersGrid;
+        grid.innerHTML = '';
+
+        if (!originalImage) {
+            const msg = document.createElement('div');
+            msg.className = 'filters-empty';
+            msg.textContent = 'Upload an image to see filter previews.';
+            grid.appendChild(msg);
+            return;
+        }
+
+        // Thumb size: fixed canvas 120px wide, proportional height
+        const thumbW = 120;
+        const thumbH = Math.round(thumbW * (originalHeight / originalWidth));
+
+        FILTER_PRESETS.forEach((preset, idx) => {
+            const wrap = document.createElement('div');
+            wrap.className = 'filter-thumb' + (idx === selectedFilterIndex ? ' selected' : '');
+
+            const canvas = document.createElement('canvas');
+            canvas.width = thumbW;
+            canvas.height = thumbH;
+
+            const ctx = canvas.getContext('2d');
+            if (preset.filter !== 'none') {
+                ctx.filter = preset.filter;
+            }
+            ctx.drawImage(originalImage, 0, 0, thumbW, thumbH);
+
+            const label = document.createElement('div');
+            label.className = 'filter-thumb-label';
+            label.textContent = preset.name;
+
+            wrap.appendChild(canvas);
+            wrap.appendChild(label);
+
+            wrap.addEventListener('click', () => {
+                selectedFilterIndex = idx;
+                grid.querySelectorAll('.filter-thumb').forEach((t, i) => {
+                    t.classList.toggle('selected', i === idx);
+                });
+            });
+
+            grid.appendChild(wrap);
+        });
+    }
+
+    function initFiltersTool() {
+        elements.filtersQualitySlider.addEventListener('input', () => {
+            elements.filtersQualityVal.textContent = elements.filtersQualitySlider.value + '%';
+        });
+
+        elements.filtersFormatSelect.addEventListener('change', () => {
+            updateQualityVisibility(elements.filtersFormatSelect, elements.filtersQualitySlider);
+            updateExtensionDisplay(elements.filtersFormatSelect, elements.filtersFilenameExt);
+        });
+
+        elements.filtersBtn.addEventListener('click', () => safeExecute(processFilters, 'Filters'));
+
+        updateQualityVisibility(elements.filtersFormatSelect, elements.filtersQualitySlider);
+        updateExtensionDisplay(elements.filtersFormatSelect, elements.filtersFilenameExt);
+
+        // Build empty state grid on load
+        buildFilterThumbnails();
+    }
+
+    function processFilters() {
+        if (!originalImage) {
+            alert('Please upload an image first.');
+            return;
+        }
+
+        const preset = FILTER_PRESETS[selectedFilterIndex];
+        const format = elements.filtersFormatSelect.value;
+        const quality = parseInt(elements.filtersQualitySlider.value, 10) / 100;
+        const filename = getDownloadFilename(elements.filtersFilename, '_filtered', format);
+
+        const canvas = document.createElement('canvas');
+        canvas.width = originalWidth;
+        canvas.height = originalHeight;
+
+        const ctx = canvas.getContext('2d');
+        if (preset.filter !== 'none') {
+            ctx.filter = preset.filter;
+        }
+        ctx.drawImage(originalImage, 0, 0);
+
+        const mimeType = `image/${format === 'jpg' ? 'jpeg' : format}`;
+        canvas.toBlob(function(blob) {
+            downloadBlob(blob, filename);
+            cleanupCanvas(canvas);
+        }, mimeType, format === 'png' ? undefined : quality);
+    }
+
+    // ===========================================
+    // FORMAT CONVERSION TOOL
+    // ===========================================
+
+    // Check AVIF support once at startup
+    let avifSupported = null;
+    function checkAvifSupport(callback) {
+        if (avifSupported !== null) { callback(avifSupported); return; }
+        const testCanvas = document.createElement('canvas');
+        testCanvas.width = 1;
+        testCanvas.height = 1;
+        testCanvas.toBlob(function(blob) {
+            avifSupported = blob !== null && blob.size > 0;
+            callback(avifSupported);
+        }, 'image/avif', 0.5);
+    }
+
+    function initConvertTool() {
+        const fcQualitySlider = document.getElementById('fc-quality-slider');
+        const fcQualityVal = document.getElementById('fc-quality-val');
+        const fcFormatSelect = document.getElementById('fc-format-select');
+        const fcFilenameExt = document.getElementById('fc-filename-ext');
+        const fcDownloadBtn = document.getElementById('fc-download-btn');
+        const fcAvifWarning = document.getElementById('fc-avif-warning');
+
+        elements.fcQualitySlider = fcQualitySlider;
+        elements.fcQualityVal = fcQualityVal;
+        elements.fcFormatSelect = fcFormatSelect;
+        elements.fcFilenameExt = fcFilenameExt;
+        elements.fcDownloadBtn = fcDownloadBtn;
+        elements.fcAvifWarning = fcAvifWarning;
+        elements.fcFilename = document.getElementById('fc-filename');
+        elements.fcSizeValue = document.getElementById('fc-size-value');
+
+        fcQualitySlider.addEventListener('input', function() {
+            fcQualityVal.textContent = fcQualitySlider.value + '%';
+            scheduleFcEstimate();
+        });
+
+        fcFormatSelect.addEventListener('change', function() {
+            updateExtensionDisplay(fcFormatSelect, fcFilenameExt);
+            updateFcQualityVisibility();
+            updateFcAvifWarning();
+            scheduleFcEstimate();
+        });
+
+        fcDownloadBtn.addEventListener('click', function() {
+            safeExecute(processConvert, 'Convert');
+        });
+
+        updateExtensionDisplay(fcFormatSelect, fcFilenameExt);
+        updateFcQualityVisibility();
+
+        // Check AVIF on init
+        checkAvifSupport(function(supported) {
+            avifSupported = supported;
+            updateFcAvifWarning();
+        });
+    }
+
+    function updateFcQualityVisibility() {
+        const format = elements.fcFormatSelect.value;
+        const qualityGroup = elements.fcQualitySlider.closest('.control-group');
+        if (format === 'png') {
+            qualityGroup.style.opacity = '0.5';
+            qualityGroup.style.pointerEvents = 'none';
+        } else {
+            qualityGroup.style.opacity = '1';
+            qualityGroup.style.pointerEvents = 'auto';
+        }
+    }
+
+    function updateFcAvifWarning() {
+        const format = elements.fcFormatSelect.value;
+        if (format === 'avif' && avifSupported === false) {
+            elements.fcAvifWarning.classList.remove('hidden');
+        } else {
+            elements.fcAvifWarning.classList.add('hidden');
+        }
+    }
+
+    let fcEstimateTimer = null;
+    function scheduleFcEstimate() {
+        if (fcEstimateTimer) clearTimeout(fcEstimateTimer);
+        fcEstimateTimer = setTimeout(runFcEstimate, 300);
+    }
+
+    function runFcEstimate() {
+        if (!originalImage) return;
+
+        const format = elements.fcFormatSelect.value;
+        const quality = parseInt(elements.fcQualitySlider.value, 10) / 100;
+        const mimeType = `image/${format === 'jpg' ? 'jpeg' : format}`;
+
+        const canvas = document.createElement('canvas');
+        canvas.width = originalWidth;
+        canvas.height = originalHeight;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(originalImage, 0, 0);
+
+        canvas.toBlob(function(blob) {
+            if (blob) {
+                elements.fcSizeValue.textContent = formatFileSize(blob.size);
+            } else {
+                elements.fcSizeValue.textContent = 'Not supported in this browser';
+            }
+            cleanupCanvas(canvas);
+        }, mimeType, format === 'png' ? undefined : quality);
+    }
+
+    function processConvert() {
+        if (!originalImage) {
+            alert('Please upload an image first.');
+            return;
+        }
+
+        const format = elements.fcFormatSelect.value;
+        const quality = parseInt(elements.fcQualitySlider.value, 10) / 100;
+        const mimeType = `image/${format === 'jpg' ? 'jpeg' : format}`;
+
+        if (format === 'avif' && avifSupported === false) {
+            alert('AVIF not supported in this browser. Try Chrome or Edge.');
+            return;
+        }
+
+        const canvas = document.createElement('canvas');
+        canvas.width = originalWidth;
+        canvas.height = originalHeight;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(originalImage, 0, 0);
+
+        const filename = getDownloadFilename(elements.fcFilename, '_converted', format);
+
+        canvas.toBlob(function(blob) {
+            if (!blob) {
+                alert('Format conversion failed. This format may not be supported in your browser.');
+                return;
+            }
+            downloadBlob(blob, filename);
+            cleanupCanvas(canvas);
+        }, mimeType, format === 'png' ? undefined : quality);
+    }
+
+    // ===========================================
+    // TARGET SIZE TOOL
+    // ===========================================
+
+    let tsResultBlob = null;
+
+    function initTargetSizeTool() {
+        const tsFormatSelect = document.getElementById('ts-format-select');
+        const tsFilenameExt = document.getElementById('ts-filename-ext');
+        const tsSearchBtn = document.getElementById('ts-search-btn');
+        const tsDownloadBtn = document.getElementById('ts-download-btn');
+
+        elements.tsTargetKb = document.getElementById('ts-target-kb');
+        elements.tsFormatSelect = tsFormatSelect;
+        elements.tsFilenameExt = tsFilenameExt;
+        elements.tsSearchBtn = tsSearchBtn;
+        elements.tsDownloadBtn = tsDownloadBtn;
+        elements.tsFilename = document.getElementById('ts-filename');
+        elements.tsProgress = document.getElementById('ts-progress');
+        elements.tsProgressText = document.getElementById('ts-progress-text');
+        elements.tsProgressFill = document.getElementById('ts-progress-fill');
+        elements.tsResult = document.getElementById('ts-result');
+        elements.tsResultText = document.getElementById('ts-result-text');
+
+        tsFormatSelect.addEventListener('change', function() {
+            updateExtensionDisplay(tsFormatSelect, tsFilenameExt);
+            // Reset result when format changes
+            tsResultBlob = null;
+            tsDownloadBtn.disabled = true;
+            elements.tsResult.classList.add('hidden');
+        });
+
+        tsSearchBtn.addEventListener('click', function() {
+            processTargetSize().catch(function(err) {
+                console.error('Target Size error:', err);
+                alert('Target Size encountered an error. Please try again.');
+                elements.tsSearchBtn.disabled = false;
+                elements.tsProgress.classList.add('hidden');
+            });
+        });
+
+        tsDownloadBtn.addEventListener('click', function() {
+            safeExecute(downloadTargetSizeResult, 'Target Size Download');
+        });
+
+        updateExtensionDisplay(tsFormatSelect, tsFilenameExt);
+    }
+
+    async function processTargetSize() {
+        if (!originalImage) {
+            alert('Please upload an image first.');
+            return;
+        }
+
+        const targetKb = parseFloat(elements.tsTargetKb.value);
+        if (!Number.isFinite(targetKb) || targetKb <= 0) {
+            alert('Please enter a valid target size in KB (must be greater than 0).');
+            return;
+        }
+
+        const targetBytes = targetKb * 1024;
+        const format = elements.tsFormatSelect.value;
+        const mimeType = `image/${format === 'jpg' ? 'jpeg' : format}`;
+
+        // Draw image to canvas once
+        const canvas = document.createElement('canvas');
+        canvas.width = originalWidth;
+        canvas.height = originalHeight;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(originalImage, 0, 0);
+
+        // Reset UI state
+        tsResultBlob = null;
+        elements.tsDownloadBtn.disabled = true;
+        elements.tsResult.classList.add('hidden');
+        elements.tsProgress.classList.remove('hidden');
+        elements.tsSearchBtn.disabled = true;
+
+        const MAX_ITERATIONS = 8;
+        let lo = 0.01;
+        let hi = 1.0;
+        let lastBlob = null;
+        let lastQuality = hi;
+
+        for (let i = 0; i < MAX_ITERATIONS; i++) {
+            const mid = (lo + hi) / 2;
+            lastQuality = mid;
+
+            // Update progress
+            elements.tsProgressText.textContent = `Searching... attempt ${i + 1}/${MAX_ITERATIONS}`;
+            elements.tsProgressFill.style.width = `${((i + 1) / MAX_ITERATIONS) * 100}%`;
+
+            const blob = await new Promise(resolve => canvas.toBlob(resolve, mimeType, mid));
+            lastBlob = blob;
+
+            if (blob.size > targetBytes) {
+                hi = mid;
+            } else {
+                lo = mid;
+            }
+        }
+
+        cleanupCanvas(canvas);
+        elements.tsSearchBtn.disabled = false;
+        elements.tsProgress.classList.add('hidden');
+
+        if (lastBlob) {
+            tsResultBlob = lastBlob;
+            const resultKb = (lastBlob.size / 1024).toFixed(0);
+            const resultQuality = Math.round(lastQuality * 100);
+            elements.tsResultText.textContent = `Found: ${resultKb} KB at ${resultQuality}% quality`;
+            elements.tsResult.classList.remove('hidden');
+            elements.tsDownloadBtn.disabled = false;
+        } else {
+            alert('Search failed. Please try again.');
+        }
+    }
+
+    function downloadTargetSizeResult() {
+        if (!tsResultBlob) {
+            alert('No result available. Please run the search first.');
+            return;
+        }
+
+        const format = elements.tsFormatSelect.value;
+        const filename = getDownloadFilename(elements.tsFilename, '_optimized', format);
+        downloadBlob(tsResultBlob, filename);
+    }
+
+    // ===========================================
+    // ADD WATERMARK TOOL
+    // ===========================================
+
+    function initAddWatermarkTool() {
+        const { addwmSizeSlider, addwmSizeVal, addwmOpacitySlider, addwmOpacityVal,
+                addwmRotationSlider, addwmRotationVal, addwmFormatSelect,
+                addwmQualitySlider, addwmQualityVal, addwmFilenameExt, addwmBtn } = elements;
+
+        addwmSizeSlider.addEventListener('input', () => {
+            addwmSizeVal.textContent = addwmSizeSlider.value + 'px';
+        });
+        addwmOpacitySlider.addEventListener('input', () => {
+            addwmOpacityVal.textContent = addwmOpacitySlider.value + '%';
+        });
+        addwmRotationSlider.addEventListener('input', () => {
+            addwmRotationVal.textContent = addwmRotationSlider.value + '\u00b0';
+        });
+        addwmQualitySlider.addEventListener('input', () => {
+            addwmQualityVal.textContent = addwmQualitySlider.value + '%';
+        });
+        addwmFormatSelect.addEventListener('change', () => {
+            updateQualityVisibility(addwmFormatSelect, addwmQualitySlider);
+            updateExtensionDisplay(addwmFormatSelect, addwmFilenameExt);
+        });
+        addwmBtn.addEventListener('click', () => safeExecute(processAddWatermark, 'Add Watermark'));
+
+        updateQualityVisibility(addwmFormatSelect, addwmQualitySlider);
+        updateExtensionDisplay(addwmFormatSelect, addwmFilenameExt);
+    }
+
+    function processAddWatermark() {
+        if (!originalImage) {
+            alert('Please upload an image first.');
+            return;
+        }
+
+        const text = elements.addwmText.value.trim();
+        if (!text) {
+            alert('Please enter watermark text.');
+            return;
+        }
+
+        const fontSize = parseInt(elements.addwmSizeSlider.value, 10);
+        const opacity = parseInt(elements.addwmOpacitySlider.value, 10) / 100;
+        const rotation = parseInt(elements.addwmRotationSlider.value, 10) * (Math.PI / 180);
+        const colour = elements.addwmColour.value;
+        const position = elements.addwmPosition.value;
+        const format = elements.addwmFormatSelect.value;
+        const quality = parseInt(elements.addwmQualitySlider.value, 10) / 100;
+
+        const canvas = document.createElement('canvas');
+        canvas.width = originalWidth;
+        canvas.height = originalHeight;
+
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(originalImage, 0, 0);
+
+        ctx.save();
+        ctx.globalAlpha = opacity;
+        ctx.fillStyle = colour;
+        ctx.font = `bold ${fontSize}px sans-serif`;
+        ctx.textBaseline = 'middle';
+
+        const textMetrics = ctx.measureText(text);
+        const textW = textMetrics.width;
+        const textH = fontSize;
+        const margin = Math.max(20, fontSize * 0.5);
+
+        if (position === 'tile') {
+            const padding = fontSize * 3;
+            const stepX = textW + padding;
+            const stepY = textH + padding;
+            const offsetX = stepX * 0.5;
+            const offsetY = stepY * 0.5;
+
+            for (let y = -stepY; y < originalHeight + stepY; y += stepY) {
+                for (let x = -stepX; x < originalWidth + stepX; x += stepX) {
+                    ctx.save();
+                    ctx.translate(x + offsetX, y + offsetY);
+                    ctx.rotate(rotation);
+                    ctx.fillText(text, -textW / 2, 0);
+                    ctx.restore();
+                }
+            }
+        } else {
+            let cx, cy;
+
+            if (position === 'center') {
+                cx = originalWidth / 2;
+                cy = originalHeight / 2;
+            } else if (position === 'bottom-right') {
+                cx = originalWidth - margin - textW / 2;
+                cy = originalHeight - margin - textH / 2;
+            } else if (position === 'bottom-left') {
+                cx = margin + textW / 2;
+                cy = originalHeight - margin - textH / 2;
+            } else if (position === 'top-right') {
+                cx = originalWidth - margin - textW / 2;
+                cy = margin + textH / 2;
+            } else if (position === 'top-left') {
+                cx = margin + textW / 2;
+                cy = margin + textH / 2;
+            }
+
+            ctx.save();
+            ctx.translate(cx, cy);
+            ctx.rotate(rotation);
+            ctx.textAlign = 'center';
+            ctx.fillText(text, 0, 0);
+            ctx.restore();
+        }
+
+        ctx.restore();
+
+        const mimeType = `image/${format === 'jpg' ? 'jpeg' : format}`;
+        const filename = getDownloadFilename(elements.addwmFilename, '_watermarked', format);
+
+        canvas.toBlob(function(blob) {
+            downloadBlob(blob, filename);
+            cleanupCanvas(canvas);
+        }, mimeType, format === 'png' ? undefined : quality);
+    }
+
+    // ===========================================
+    // AUTO-ENHANCE TOOL
+    // ===========================================
+
+    let enhanceOriginalData = null;
+    let enhanceEnhancedData = null;
+    let enhanceWidth = 0;
+    let enhanceHeight = 0;
+
+    function initEnhanceTool() {
+        const { enhanceRunBtn, enhanceStrengthSlider, enhanceStrengthVal,
+                enhanceQualitySlider, enhanceQualityVal, enhanceFormatSelect,
+                enhanceFilenameExt, enhanceDownloadBtn } = elements;
+
+        enhanceRunBtn.addEventListener('click', () => safeExecute(processEnhance, 'Auto-Enhance'));
+
+        enhanceStrengthSlider.addEventListener('input', () => {
+            enhanceStrengthVal.textContent = enhanceStrengthSlider.value + '%';
+            if (enhanceOriginalData && enhanceEnhancedData) {
+                applyEnhanceStrength();
+            }
+        });
+
+        enhanceQualitySlider.addEventListener('input', () => {
+            enhanceQualityVal.textContent = enhanceQualitySlider.value + '%';
+        });
+
+        enhanceFormatSelect.addEventListener('change', () => {
+            updateQualityVisibility(enhanceFormatSelect, enhanceQualitySlider);
+            updateExtensionDisplay(enhanceFormatSelect, enhanceFilenameExt);
+        });
+
+        enhanceDownloadBtn.addEventListener('click', () => safeExecute(downloadEnhanced, 'Enhance Download'));
+
+        updateQualityVisibility(enhanceFormatSelect, enhanceQualitySlider);
+        updateExtensionDisplay(enhanceFormatSelect, enhanceFilenameExt);
+    }
+
+    function processEnhance() {
+        if (!originalImage) {
+            alert('Please upload an image first.');
+            return;
+        }
+
+        const canvas = document.createElement('canvas');
+        canvas.width = originalWidth;
+        canvas.height = originalHeight;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(originalImage, 0, 0);
+
+        const imageData = ctx.getImageData(0, 0, originalWidth, originalHeight);
+        const pixels = imageData.data;
+        const total = originalWidth * originalHeight;
+
+        const histR = new Int32Array(256);
+        const histG = new Int32Array(256);
+        const histB = new Int32Array(256);
+
+        for (let i = 0; i < pixels.length; i += 4) {
+            histR[pixels[i]]++;
+            histG[pixels[i + 1]]++;
+            histB[pixels[i + 2]]++;
+        }
+
+        function findPercentileValue(hist, totalPixels, pct) {
+            const target = totalPixels * pct;
+            let cumulative = 0;
+            for (let v = 0; v < 256; v++) {
+                cumulative += hist[v];
+                if (cumulative >= target) return v;
+            }
+            return 255;
+        }
+
+        const lowR = findPercentileValue(histR, total, 0.05);
+        const highR = findPercentileValue(histR, total, 0.95);
+        const lowG = findPercentileValue(histG, total, 0.05);
+        const highG = findPercentileValue(histG, total, 0.95);
+        const lowB = findPercentileValue(histB, total, 0.05);
+        const highB = findPercentileValue(histB, total, 0.95);
+
+        enhanceOriginalData = new Uint8ClampedArray(pixels);
+        enhanceWidth = originalWidth;
+        enhanceHeight = originalHeight;
+
+        const enhanced = new Uint8ClampedArray(pixels.length);
+        for (let i = 0; i < pixels.length; i += 4) {
+            enhanced[i]     = stretchChannel(pixels[i],     lowR, highR);
+            enhanced[i + 1] = stretchChannel(pixels[i + 1], lowG, highG);
+            enhanced[i + 2] = stretchChannel(pixels[i + 2], lowB, highB);
+            enhanced[i + 3] = pixels[i + 3];
+        }
+
+        enhanceEnhancedData = enhanced;
+
+        applyEnhanceStrength();
+
+        const origBrightness = channelMean(enhanceOriginalData, total);
+        const newBrightness = channelMean(enhanceEnhancedData, total);
+        const brightnessDelta = Math.round((newBrightness - origBrightness) / 255 * 100);
+
+        const origContrast = channelStdDev(enhanceOriginalData, total, origBrightness);
+        const newContrast = channelStdDev(enhanceEnhancedData, total, newBrightness);
+        const contrastDelta = Math.round((newContrast - origContrast) / origContrast * 100);
+
+        const sign = (n) => n >= 0 ? '+' : '';
+        elements.enhanceStats.innerHTML =
+            `<div class="enhance-stat-item">Brightness <strong>${sign(brightnessDelta)}${brightnessDelta}%</strong></div>` +
+            `<div class="enhance-stat-item">Contrast <strong>${sign(contrastDelta)}${contrastDelta}%</strong></div>` +
+            `<div class="enhance-stat-item">R-range <strong>${lowR}\u2013${highR}</strong></div>` +
+            `<div class="enhance-stat-item">G-range <strong>${lowG}\u2013${highG}</strong></div>` +
+            `<div class="enhance-stat-item">B-range <strong>${lowB}\u2013${highB}</strong></div>`;
+
+        elements.enhanceResults.classList.remove('hidden');
+        elements.enhanceStrengthGroup.classList.remove('hidden');
+        elements.enhanceDownloadBtn.disabled = false;
+
+        cleanupCanvas(canvas);
+    }
+
+    function stretchChannel(value, low, high) {
+        if (high <= low) return value;
+        return Math.max(0, Math.min(255, Math.round((value - low) * 255 / (high - low))));
+    }
+
+    function channelMean(data, totalPixels) {
+        let sum = 0;
+        for (let i = 0; i < data.length; i += 4) {
+            sum += (data[i] + data[i + 1] + data[i + 2]) / 3;
+        }
+        return sum / totalPixels;
+    }
+
+    function channelStdDev(data, totalPixels, mean) {
+        let sumSq = 0;
+        for (let i = 0; i < data.length; i += 4) {
+            const v = (data[i] + data[i + 1] + data[i + 2]) / 3;
+            sumSq += (v - mean) * (v - mean);
+        }
+        return Math.sqrt(sumSq / totalPixels);
+    }
+
+    function applyEnhanceStrength() {
+        const strength = parseInt(elements.enhanceStrengthSlider.value, 10) / 100;
+        const blended = new Uint8ClampedArray(enhanceOriginalData.length);
+
+        for (let i = 0; i < enhanceOriginalData.length; i += 4) {
+            blended[i]     = Math.round(enhanceOriginalData[i]     * (1 - strength) + enhanceEnhancedData[i]     * strength);
+            blended[i + 1] = Math.round(enhanceOriginalData[i + 1] * (1 - strength) + enhanceEnhancedData[i + 1] * strength);
+            blended[i + 2] = Math.round(enhanceOriginalData[i + 2] * (1 - strength) + enhanceEnhancedData[i + 2] * strength);
+            blended[i + 3] = enhanceOriginalData[i + 3];
+        }
+
+        const previewCanvas = document.createElement('canvas');
+        previewCanvas.width = enhanceWidth;
+        previewCanvas.height = enhanceHeight;
+        const pCtx = previewCanvas.getContext('2d');
+        const blendedImageData = pCtx.createImageData(enhanceWidth, enhanceHeight);
+        blendedImageData.data.set(blended);
+        pCtx.putImageData(blendedImageData, 0, 0);
+        elements.imagePreview.src = previewCanvas.toDataURL();
+        cleanupCanvas(previewCanvas);
+
+        enhanceEnhancedData._blended = blended;
+    }
+
+    function downloadEnhanced() {
+        if (!enhanceOriginalData || !enhanceEnhancedData) {
+            alert('Please run Auto-Enhance first.');
+            return;
+        }
+
+        const strength = parseInt(elements.enhanceStrengthSlider.value, 10) / 100;
+        const blended = new Uint8ClampedArray(enhanceOriginalData.length);
+
+        for (let i = 0; i < enhanceOriginalData.length; i += 4) {
+            blended[i]     = Math.round(enhanceOriginalData[i]     * (1 - strength) + enhanceEnhancedData[i]     * strength);
+            blended[i + 1] = Math.round(enhanceOriginalData[i + 1] * (1 - strength) + enhanceEnhancedData[i + 1] * strength);
+            blended[i + 2] = Math.round(enhanceOriginalData[i + 2] * (1 - strength) + enhanceEnhancedData[i + 2] * strength);
+            blended[i + 3] = enhanceOriginalData[i + 3];
+        }
+
+        const canvas = document.createElement('canvas');
+        canvas.width = enhanceWidth;
+        canvas.height = enhanceHeight;
+        const ctx = canvas.getContext('2d');
+        const outputData = ctx.createImageData(enhanceWidth, enhanceHeight);
+        outputData.data.set(blended);
+        ctx.putImageData(outputData, 0, 0);
+
+        const format = elements.enhanceFormatSelect.value;
+        const quality = parseInt(elements.enhanceQualitySlider.value, 10) / 100;
+        const mimeType = `image/${format === 'jpg' ? 'jpeg' : format}`;
+        const filename = getDownloadFilename(elements.enhanceFilename, '_enhanced', format);
+
+        canvas.toBlob(function(blob) {
+            downloadBlob(blob, filename);
+            cleanupCanvas(canvas);
+        }, mimeType, format === 'png' ? undefined : quality);
+    }
+
+    // ===========================================
+    // IMAGE TO PDF TOOL
+    // ===========================================
+
+    let pdfFiles = [];
+
+    function initPdfTool() {
+        const pdfDropZone = document.getElementById('pdf-drop-zone');
+        const pdfFileInput = document.getElementById('pdf-file-input');
+        const pdfClearBtn = document.getElementById('pdf-clear-btn');
+        const pdfMarginSlider = document.getElementById('pdf-margin-slider');
+        const pdfMarginVal = document.getElementById('pdf-margin-val');
+        const pdfCreateBtn = document.getElementById('pdf-create-btn');
+
+        pdfDropZone.addEventListener('click', () => pdfFileInput.click());
+        pdfDropZone.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            pdfDropZone.classList.add('drag-over');
+        });
+        pdfDropZone.addEventListener('dragleave', (e) => {
+            e.preventDefault();
+            pdfDropZone.classList.remove('drag-over');
+        });
+        pdfDropZone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            pdfDropZone.classList.remove('drag-over');
+            handlePdfFiles(e.dataTransfer.files);
+        });
+        pdfFileInput.addEventListener('change', (e) => {
+            handlePdfFiles(e.target.files);
+        });
+
+        pdfClearBtn.addEventListener('click', clearPdfFiles);
+        pdfMarginSlider.addEventListener('input', () => {
+            pdfMarginVal.textContent = pdfMarginSlider.value + 'px';
+        });
+        pdfCreateBtn.addEventListener('click', () => safeExecute(processPdf, 'PDF Create'));
+    }
+
+    function handlePdfFiles(fileList) {
+        const files = Array.from(fileList).filter(f => f.type.startsWith('image/'));
+        if (files.length === 0) {
+            alert('Please select valid image files.');
+            return;
+        }
+        for (const f of files) {
+            if (f.size > 100 * 1024 * 1024) {
+                alert(`File "${f.name}" is too large. Maximum 100MB per file.`);
+                return;
+            }
+        }
+        pdfFiles = pdfFiles.concat(files);
+        renderPdfFileList();
+    }
+
+    function renderPdfFileList() {
+        const container = document.getElementById('pdf-file-list-container');
+        const list = document.getElementById('pdf-file-list');
+        const count = document.getElementById('pdf-file-count');
+        const dropZone = document.getElementById('pdf-drop-zone');
+
+        if (pdfFiles.length === 0) {
+            container.classList.add('hidden');
+            dropZone.classList.remove('hidden');
+            return;
+        }
+
+        dropZone.classList.add('hidden');
+        container.classList.remove('hidden');
+        count.textContent = pdfFiles.length;
+        list.innerHTML = '';
+
+        pdfFiles.forEach((file, index) => {
+            const li = document.createElement('li');
+
+            const thumb = document.createElement('img');
+            thumb.className = 'pdf-thumb';
+            thumb.alt = file.name;
+            const thumbUrl = URL.createObjectURL(file);
+            thumb.src = thumbUrl;
+            thumb.onload = () => URL.revokeObjectURL(thumbUrl);
+
+            const nameSpan = document.createElement('span');
+            nameSpan.className = 'file-name';
+            nameSpan.textContent = file.name;
+
+            const sizeSpan = document.createElement('span');
+            sizeSpan.className = 'file-size';
+            sizeSpan.textContent = formatFileSize(file.size);
+
+            const removeBtn = document.createElement('button');
+            removeBtn.className = 'remove-file-btn';
+            removeBtn.textContent = '\u00d7';
+            removeBtn.addEventListener('click', () => {
+                pdfFiles.splice(index, 1);
+                renderPdfFileList();
+            });
+
+            li.appendChild(thumb);
+            li.appendChild(nameSpan);
+            li.appendChild(sizeSpan);
+            li.appendChild(removeBtn);
+            list.appendChild(li);
+        });
+    }
+
+    function clearPdfFiles() {
+        pdfFiles = [];
+        document.getElementById('pdf-file-input').value = '';
+        renderPdfFileList();
+    }
+
+    async function processPdf() {
+        if (pdfFiles.length === 0) {
+            alert('Please add images first.');
+            return;
+        }
+
+        if (typeof jspdf === 'undefined') {
+            alert('PDF library not loaded. Please check your internet connection and refresh.');
+            return;
+        }
+
+        const btn = document.getElementById('pdf-create-btn');
+        btn.disabled = true;
+        btn.querySelector('.btn-text').textContent = 'CREATING...';
+
+        try {
+            const pageSize = document.getElementById('pdf-page-size').value;
+            const orientPref = document.getElementById('pdf-orientation').value;
+            const margin = parseInt(document.getElementById('pdf-margin-slider').value, 10);
+            const rawFilename = document.getElementById('pdf-filename').value.trim();
+            const filename = sanitizeFilename(rawFilename || 'document') + '.pdf';
+
+            const images = await Promise.all(pdfFiles.map(file => new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    const img = new Image();
+                    img.onload = () => resolve({ dataUrl: e.target.result, w: img.naturalWidth, h: img.naturalHeight });
+                    img.onerror = reject;
+                    img.src = e.target.result;
+                };
+                reader.onerror = reject;
+                reader.readAsDataURL(file);
+            })));
+
+            const PAGE_SIZES = {
+                a4: [210, 297],
+                letter: [215.9, 279.4]
+            };
+
+            let pdf = null;
+
+            images.forEach((imgData, i) => {
+                const { dataUrl, w, h } = imgData;
+                const isLandscape = w > h;
+
+                let orient;
+                if (orientPref === 'auto') {
+                    orient = isLandscape ? 'landscape' : 'portrait';
+                } else {
+                    orient = orientPref;
+                }
+
+                let pageW, pageH;
+                if (pageSize === 'original') {
+                    const pxToMm = 25.4 / 96;
+                    pageW = w * pxToMm;
+                    pageH = h * pxToMm;
+                } else {
+                    const dims = PAGE_SIZES[pageSize];
+                    if (orient === 'landscape') {
+                        pageW = dims[1];
+                        pageH = dims[0];
+                    } else {
+                        pageW = dims[0];
+                        pageH = dims[1];
+                    }
+                }
+
+                if (i === 0) {
+                    pdf = new jspdf.jsPDF({
+                        orientation: pageSize === 'original' ? (w >= h ? 'landscape' : 'portrait') : orient,
+                        unit: 'mm',
+                        format: pageSize === 'original' ? [pageW, pageH] : pageSize
+                    });
+                } else {
+                    pdf.addPage(
+                        pageSize === 'original' ? [pageW, pageH] : pageSize,
+                        pageSize === 'original' ? (w >= h ? 'landscape' : 'portrait') : orient
+                    );
+                }
+
+                const marginMm = margin * 25.4 / 96;
+                const availW = pageW - marginMm * 2;
+                const availH = pageH - marginMm * 2;
+
+                const imgAspect = w / h;
+                const availAspect = availW / availH;
+                let drawW, drawH;
+                if (imgAspect > availAspect) {
+                    drawW = availW;
+                    drawH = availW / imgAspect;
+                } else {
+                    drawH = availH;
+                    drawW = availH * imgAspect;
+                }
+
+                const offsetX = marginMm + (availW - drawW) / 2;
+                const offsetY = marginMm + (availH - drawH) / 2;
+
+                pdf.addImage(dataUrl, 'JPEG', offsetX, offsetY, drawW, drawH);
+            });
+
+            pdf.save(filename);
+        } catch (err) {
+            console.error('PDF creation error:', err);
+            alert('Error creating PDF. Please try again.');
+        } finally {
+            btn.disabled = false;
+            btn.querySelector('.btn-text').textContent = 'CREATE PDF';
+        }
+    }
+
+    // ===========================================
+    // BATCH PROCESSING TOOL
+    // ===========================================
+
+    let batchFiles = [];
+    let batchResultBlobs = [];
+    let batchAspectLocked = true;
+
+    function initBatchTool() {
+        const batchDropZone = document.getElementById('batch-drop-zone');
+        const batchFileInput = document.getElementById('batch-file-input');
+        const batchClearBtn = document.getElementById('batch-clear-btn');
+        const batchOperation = document.getElementById('batch-operation');
+        const batchQualitySlider = document.getElementById('batch-quality-slider');
+        const batchQualityVal = document.getElementById('batch-quality-val');
+        const batchLockBtn = document.getElementById('batch-lock-btn');
+        const batchProcessBtn = document.getElementById('batch-process-btn');
+        const batchZipBtn = document.getElementById('batch-zip-btn');
+
+        batchDropZone.addEventListener('click', () => batchFileInput.click());
+        batchDropZone.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            batchDropZone.classList.add('drag-over');
+        });
+        batchDropZone.addEventListener('dragleave', (e) => {
+            e.preventDefault();
+            batchDropZone.classList.remove('drag-over');
+        });
+        batchDropZone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            batchDropZone.classList.remove('drag-over');
+            handleBatchFiles(e.dataTransfer.files);
+        });
+        batchFileInput.addEventListener('change', (e) => {
+            handleBatchFiles(e.target.files);
+        });
+
+        batchClearBtn.addEventListener('click', clearBatchFiles);
+
+        batchOperation.addEventListener('change', () => {
+            const op = batchOperation.value;
+            document.getElementById('batch-resize-controls').classList.toggle('hidden', op !== 'resize');
+            document.getElementById('batch-compress-controls').classList.toggle('hidden', op !== 'compress');
+            document.getElementById('batch-convert-controls').classList.toggle('hidden', op !== 'convert');
+        });
+
+        batchQualitySlider.addEventListener('input', () => {
+            batchQualityVal.textContent = batchQualitySlider.value + '%';
+        });
+
+        batchLockBtn.addEventListener('click', () => {
+            batchAspectLocked = !batchAspectLocked;
+            batchLockBtn.classList.toggle('active', batchAspectLocked);
+        });
+
+        batchProcessBtn.addEventListener('click', () => safeExecute(processBatch, 'Batch Process'));
+        batchZipBtn.addEventListener('click', () => safeExecute(downloadBatchZip, 'Batch ZIP'));
+    }
+
+    function handleBatchFiles(fileList) {
+        const MAX_BATCH = 50;
+        const files = Array.from(fileList).filter(f => f.type.startsWith('image/'));
+        if (files.length === 0) {
+            alert('Please select valid image files.');
+            return;
+        }
+        batchFiles = batchFiles.concat(files).slice(0, MAX_BATCH);
+        if (batchFiles.length >= MAX_BATCH) {
+            alert(`Maximum ${MAX_BATCH} files. Extra files were ignored.`);
+        }
+        renderBatchFileList();
+    }
+
+    function renderBatchFileList() {
+        const container = document.getElementById('batch-file-list-container');
+        const list = document.getElementById('batch-file-list');
+        const count = document.getElementById('batch-file-count');
+        const dropZone = document.getElementById('batch-drop-zone');
+
+        if (batchFiles.length === 0) {
+            container.classList.add('hidden');
+            dropZone.classList.remove('hidden');
+            document.getElementById('batch-results').classList.add('hidden');
+            document.getElementById('batch-zip-btn').classList.add('hidden');
+            return;
+        }
+
+        dropZone.classList.add('hidden');
+        container.classList.remove('hidden');
+        count.textContent = batchFiles.length;
+        list.innerHTML = '';
+
+        batchFiles.forEach((file, index) => {
+            const li = document.createElement('li');
+
+            const nameSpan = document.createElement('span');
+            nameSpan.className = 'file-name';
+            nameSpan.textContent = file.name;
+
+            const sizeSpan = document.createElement('span');
+            sizeSpan.className = 'file-size';
+            sizeSpan.textContent = formatFileSize(file.size);
+
+            const removeBtn = document.createElement('button');
+            removeBtn.className = 'remove-file-btn';
+            removeBtn.textContent = '\u00d7';
+            removeBtn.addEventListener('click', () => {
+                batchFiles.splice(index, 1);
+                renderBatchFileList();
+            });
+
+            li.appendChild(nameSpan);
+            li.appendChild(sizeSpan);
+            li.appendChild(removeBtn);
+            list.appendChild(li);
+        });
+    }
+
+    function clearBatchFiles() {
+        batchFiles = [];
+        batchResultBlobs = [];
+        document.getElementById('batch-file-input').value = '';
+        document.getElementById('batch-progress').classList.add('hidden');
+        document.getElementById('batch-results').classList.add('hidden');
+        document.getElementById('batch-zip-btn').classList.add('hidden');
+        renderBatchFileList();
+    }
+
+    async function processBatch() {
+        if (batchFiles.length === 0) {
+            alert('Please add images first.');
+            return;
+        }
+
+        const op = document.getElementById('batch-operation').value;
+        const progressEl = document.getElementById('batch-progress');
+        const progressFill = document.getElementById('batch-progress-fill');
+        const progressText = document.getElementById('batch-progress-text');
+        const processBtn = document.getElementById('batch-process-btn');
+
+        processBtn.disabled = true;
+        processBtn.querySelector('.btn-text').textContent = 'PROCESSING...';
+        progressEl.classList.remove('hidden');
+        batchResultBlobs = [];
+
+        const total = batchFiles.length;
+
+        for (let i = 0; i < total; i++) {
+            const file = batchFiles[i];
+            progressText.textContent = `Processing ${i + 1} of ${total}... (${file.name})`;
+            progressFill.style.width = `${Math.round((i / total) * 100)}%`;
+
+            try {
+                const blob = await processBatchFile(file, op);
+                batchResultBlobs.push({ name: file.name, blob });
+            } catch (err) {
+                console.error(`Error processing ${file.name}:`, err);
+                batchResultBlobs.push({ name: file.name, blob: null, error: true });
+            }
+
+            await new Promise(resolve => setTimeout(resolve, 0));
+        }
+
+        progressFill.style.width = '100%';
+        progressText.textContent = `Done! ${batchResultBlobs.filter(r => !r.error).length} of ${total} processed.`;
+
+        renderBatchResults();
+        processBtn.disabled = false;
+        processBtn.querySelector('.btn-text').textContent = 'PROCESS ALL';
+    }
+
+    function processBatchFile(file, op) {
+        return new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                const img = new Image();
+                img.onload = () => {
+                    try {
+                        const canvas = document.createElement('canvas');
+                        const ctx = canvas.getContext('2d');
+                        let mimeType, quality, ext;
+
+                        if (op === 'resize') {
+                            const targetW = validatePositiveInt(document.getElementById('batch-width').value, 1, 20000);
+                            const targetH = validatePositiveInt(document.getElementById('batch-height').value, 1, 20000);
+                            const aspect = img.naturalWidth / img.naturalHeight;
+
+                            let w = targetW || img.naturalWidth;
+                            let h = targetH || img.naturalHeight;
+
+                            if (batchAspectLocked) {
+                                if (targetW && !targetH) h = Math.round(w / aspect);
+                                else if (targetH && !targetW) w = Math.round(h * aspect);
+                            }
+
+                            canvas.width = w;
+                            canvas.height = h;
+                            ctx.imageSmoothingEnabled = true;
+                            ctx.imageSmoothingQuality = 'high';
+                            ctx.drawImage(img, 0, 0, w, h);
+                            mimeType = 'image/jpeg';
+                            quality = 0.9;
+                            ext = 'jpg';
+                        } else if (op === 'compress') {
+                            canvas.width = img.naturalWidth;
+                            canvas.height = img.naturalHeight;
+                            ctx.drawImage(img, 0, 0);
+                            quality = parseInt(document.getElementById('batch-quality-slider').value, 10) / 100;
+                            mimeType = 'image/jpeg';
+                            ext = 'jpg';
+                        } else {
+                            canvas.width = img.naturalWidth;
+                            canvas.height = img.naturalHeight;
+                            ctx.drawImage(img, 0, 0);
+                            ext = document.getElementById('batch-format').value;
+                            mimeType = `image/${ext}`;
+                            quality = ext === 'png' ? undefined : 0.9;
+                        }
+
+                        canvas.toBlob((blob) => {
+                            cleanupCanvas(canvas);
+                            if (blob) {
+                                resolve({ blob, ext });
+                            } else {
+                                reject(new Error('Canvas toBlob failed'));
+                            }
+                        }, mimeType, quality);
+                    } catch (err) {
+                        reject(err);
+                    }
+                };
+                img.onerror = () => reject(new Error('Image load failed'));
+                img.src = e.target.result;
+            };
+            reader.onerror = () => reject(new Error('File read failed'));
+            reader.readAsDataURL(file);
+        });
+    }
+
+    function renderBatchResults() {
+        const resultsEl = document.getElementById('batch-results');
+        const listEl = document.getElementById('batch-results-list');
+        const zipBtn = document.getElementById('batch-zip-btn');
+
+        resultsEl.classList.remove('hidden');
+        listEl.innerHTML = '';
+
+        batchResultBlobs.forEach((item) => {
+            const li = document.createElement('li');
+
+            const nameSpan = document.createElement('span');
+            nameSpan.className = 'file-name';
+            nameSpan.textContent = item.name;
+
+            li.appendChild(nameSpan);
+
+            if (item.error || !item.blob) {
+                const errSpan = document.createElement('span');
+                errSpan.className = 'file-size';
+                errSpan.style.color = 'var(--barn-red)';
+                errSpan.textContent = 'Error';
+                li.appendChild(errSpan);
+            } else {
+                const { blob, ext } = item.blob;
+                const sizeSpan = document.createElement('span');
+                sizeSpan.className = 'file-size';
+                sizeSpan.textContent = formatFileSize(blob.size);
+
+                const baseName = item.name.replace(/\.[^/.]+$/, '');
+                const dlFilename = sanitizeFilename(baseName) + '.' + ext;
+
+                const dlLink = document.createElement('a');
+                dlLink.className = 'download-link';
+                dlLink.textContent = 'Download';
+                dlLink.href = URL.createObjectURL(blob);
+                dlLink.download = dlFilename;
+                dlLink.addEventListener('click', () => {
+                    setTimeout(() => URL.revokeObjectURL(dlLink.href), 1000);
+                });
+
+                li.appendChild(sizeSpan);
+                li.appendChild(dlLink);
+            }
+
+            listEl.appendChild(li);
+        });
+
+        const hasSuccess = batchResultBlobs.some(r => !r.error && r.blob);
+        zipBtn.classList.toggle('hidden', !hasSuccess);
+    }
+
+    async function downloadBatchZip() {
+        const successful = batchResultBlobs.filter(r => !r.error && r.blob);
+        if (successful.length === 0) {
+            alert('No successfully processed images to download.');
+            return;
+        }
+
+        const zip = new JSZip();
+
+        successful.forEach((item) => {
+            const { blob, ext } = item.blob;
+            const baseName = item.name.replace(/\.[^/.]+$/, '');
+            const filename = sanitizeFilename(baseName) + '.' + ext;
+            zip.file(filename, blob);
+        });
+
+        const zipBlob = await zip.generateAsync({ type: 'blob' });
+        downloadBlob(zipBlob, 'batch_processed.zip');
+    }
+
+    // ===========================================
     // CLIPBOARD FEATURES
     // ===========================================
 
@@ -2581,6 +4028,14 @@
         initBackgroundTool();
         initAdvancedBgTool();
         initWatermarkTool();
+        initAdjustTool();
+        initFiltersTool();
+        initConvertTool();
+        initTargetSizeTool();
+        initAddWatermarkTool();
+        initEnhanceTool();
+        initPdfTool();
+        initBatchTool();
         initClipboard();
         renderBlogPanel();
     }
