@@ -14,6 +14,56 @@
     let originalFileName = '';
     let originalFileSize = 0;
     let currentTool = 'resize';
+    let currentPost = null; // null = list view, post id = article view
+
+    // ===========================================
+    // BLOG POSTS
+    // ===========================================
+    //
+    // Voice: The Fed-Up Builder
+    // - First person singular. "I built this" not "we launched this."
+    // - PG-13 sarcasm. Dry, blunt, clearly annoyed but professional.
+    // - State the problem plainly, then state what you did about it.
+    // - Short paragraphs. 2-3 sentences max.
+    // - Specific over vague. Name the exact broken thing.
+    // - No marketing speak. No "excited to announce", no "game-changing."
+    // - End posts with something practical — what the user gets, not a CTA.
+    //
+    // Posts ordered newest-first. First item = featured post.
+    // To add a post: add an object to the TOP of this array.
+
+    const BLOG_POSTS = [
+        {
+            id: 'watermark-removal-done-properly',
+            title: 'Watermark Removal, Done Properly',
+            date: '2026-03-10',
+            readTime: '2 min read',
+            excerpt: 'Gemini puts a 4-pointed star on every image it generates. Most tools want $10/month to badly clone-stamp it out.',
+            body: [
+                "Gemini puts a semi-transparent 4-pointed star watermark on every image it generates. Bottom-right corner. 48 pixels on small images, 96 on large ones, plus a 32-pixel margin from the edge.",
+                "Most \"watermark removers\" online want $10/month to clone-stamp it. Our first attempt wasn't much better. The original algorithm copied pixels from a full patch-width away \u2014 grabbing completely unrelated content \u2014 then blended them with the watermarked pixels at the edges. The star was still there, just blurry.",
+                "So I rewrote it. The new approach is called edge-propagation inpainting. Instead of copying from far away, it samples a thin strip of clean pixels from immediately above and to the left of the watermark area. It builds color profiles from those strips, then fills inward using inverse-distance interpolation.",
+                "Pixels near the top edge get mostly the top strip\u2019s colors. Pixels near the left edge get mostly the left strip\u2019s colors. Pixels in the deep corner get a blend of both plus the corner sample. Then it adds a tiny amount of Gaussian noise calibrated to the texture of the surrounding area, so the result doesn\u2019t look artificially smooth.",
+                "No blending with the original watermarked pixels. Every pixel in the patch is fully replaced. The patch auto-sizes to 96px for images up to 1024px, or 144px for larger images.",
+                "Upload a Gemini image. The watermark is gone. You keep the full resolution. It takes about 50 milliseconds."
+            ]
+        },
+        {
+            id: 'why-we-built-this',
+            title: 'Why We Built This',
+            date: '2026-03-10',
+            readTime: '3 min read',
+            excerpt: "Every image tool on the internet follows the same playbook. Free tier with a watermark. \"Premium\" for $12/month.",
+            body: [
+                "Every image tool on the internet follows the same playbook. Free tier that watermarks your output or limits you to three images a day. \"Premium\" tier for $12/month. Enterprise pricing if you ask nicely.",
+                "Resizing a JPEG is not a premium feature. It\u2019s a canvas element and two lines of JavaScript. Stripping EXIF data is reading bytes and writing fewer bytes. Compressing an image is literally what the browser\u2019s built-in encoder already does.",
+                "These aren\u2019t hard problems. They were solved decades ago. The tools that charge for them aren\u2019t selling technology \u2014 they\u2019re selling convenience with a padlock on it.",
+                "I built iresized.com because I got tired of it. Every tool here runs entirely in your browser. Your images never leave your machine. There\u2019s no server, no account, no upload queue, no daily limit. The code is open source.",
+                "There\u2019s no catch. No freemium upsell. No \"pro\" tier coming next quarter. The tools work, they\u2019re free, and they\u2019ll stay that way.",
+                "If a resize tool can be built in 45 seconds by an AI coding assistant, it has no business costing $12 a month. That\u2019s the whole thesis."
+            ]
+        }
+    ];
 
     // Crop-specific state
     let cropSelection = { x: 0, y: 0, width: 0, height: 0 };
@@ -2237,6 +2287,64 @@
     }
 
     // ===========================================
+    // BLOG PANEL
+    // ===========================================
+
+    function renderBlogPanel() {
+        var container = document.getElementById('blog-content');
+        if (!container) return;
+
+        if (currentPost) {
+            var post = BLOG_POSTS.find(function(p) { return p.id === currentPost; });
+            if (!post) { currentPost = null; renderBlogPanel(); return; }
+
+            var bodyHtml = post.body.map(function(p) { return '<p>' + p + '</p>'; }).join('');
+            container.innerHTML =
+                '<button class="blog-back-btn" id="blog-back-btn">&larr; Back</button>' +
+                '<div class="blog-article-title">' + post.title + '</div>' +
+                '<div class="blog-article-meta">' + post.date + ' &middot; ' + post.readTime + '</div>' +
+                '<div class="blog-article-body">' + bodyHtml + '</div>';
+
+            document.getElementById('blog-back-btn').addEventListener('click', function() {
+                currentPost = null;
+                renderBlogPanel();
+            });
+        } else {
+            var featured = BLOG_POSTS[0];
+            var html = '';
+
+            if (featured) {
+                html += '<div class="blog-featured">' +
+                    '<div class="blog-featured-title">' + featured.title + '</div>' +
+                    '<div class="blog-featured-meta">' + featured.date + ' &middot; ' + featured.readTime + '</div>' +
+                    '<div class="blog-featured-excerpt">' + featured.excerpt + '</div>' +
+                    '<button class="blog-read-more" data-id="' + featured.id + '">Continue reading &rarr;</button>' +
+                    '</div>';
+            }
+
+            if (BLOG_POSTS.length > 1) {
+                html += '<hr class="blog-archive-divider">' +
+                    '<div class="blog-archive-heading">OLDER POSTS</div>';
+                for (var i = 1; i < BLOG_POSTS.length; i++) {
+                    html += '<button class="blog-archive-link" data-id="' + BLOG_POSTS[i].id + '">&rarr; ' + BLOG_POSTS[i].title + '</button>';
+                }
+            }
+
+            container.innerHTML = html;
+
+            var links = container.querySelectorAll('[data-id]');
+            links.forEach(function(link) {
+                link.addEventListener('click', function() {
+                    currentPost = this.getAttribute('data-id');
+                    renderBlogPanel();
+                    var panel = document.getElementById('blog-panel');
+                    if (panel) panel.scrollTop = 0;
+                });
+            });
+        }
+    }
+
+    // ===========================================
     // INITIALIZATION
     // ===========================================
 
@@ -2252,6 +2360,7 @@
         initBackgroundTool();
         initAdvancedBgTool();
         initWatermarkTool();
+        renderBlogPanel();
     }
 
     // Start the app
